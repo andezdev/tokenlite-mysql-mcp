@@ -19,7 +19,7 @@ export async function handleExecuteQuery({ sql }: { sql: string }) {
             content: [{ type: "text" as const, text: csvData }]
         };
     } catch (error: any) {
-        let errorMessage = `Database Error: ${error.message}`;
+        let errorMessage = error.name === 'OptimizerError' ? error.message : `Database Error: ${error.message}`;
         if (error.code === 'ER_BAD_FIELD_ERROR' || error.message?.includes('Unknown column')) {
             errorMessage += `\n\nHint: If you believe this column exists, the DBA might have just added it. Please call the 'refresh_schema' tool and try again.`;
         }

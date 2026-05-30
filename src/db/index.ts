@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import { injectLimitAst, analyzeQueryPlan } from './optimizer.js';
 
 // Supress dotenv logs so they don't corrupt the MCP JSON-RPC stdout stream
 (dotenv.config as any)({ quiet: true });
@@ -24,13 +25,14 @@ export function getDbName(): string {
  * Executes a safe query with a Timeout.
  */
 export async function executeSafeQuery(sql: string): Promise<any[]> {
-    let finalSql = sql.trim();
-    if (finalSql.toUpperCase().startsWith('SELECT') && !finalSql.toUpperCase().includes('LIMIT')) {
-        finalSql += ' LIMIT 500'; // Temporary degradation to prevent OOM
-    }
+    // AST Validation and Limit Injection
+    const astOptimizedSql = injectLimitAst(sql);
+
+    // Pre-flight Analysis
+    await analyzeQueryPlan(astOptimizedSql, pool);
 
     const [rows] = await pool.query({
-        sql: finalSql,
+        sql: astOptimizedSql,
         timeout: 15000
     });
     

@@ -86,3 +86,23 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
     (1, 1, 1, 999.00), -- John bought 1 Smartphone
     (1, 2, 2, 199.50), -- John bought 2 Headphones
     (2, 3, 1, 39.99);  -- Jane bought 1 Book
+
+-- BULK SEED DATA (For Safe-Query Optimizer Testing)
+DELIMITER //
+CREATE PROCEDURE SeedLargeData()
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    WHILE i <= 1500 DO
+        INSERT INTO customers (name, email) VALUES (CONCAT('Bulk User ', i), CONCAT('bulk_', i, '@example.com'));
+        -- We add i + 2 because IDs 1 and 2 are already taken by John and Jane
+        INSERT INTO orders (customer_id, status) VALUES (i + 2, 'delivered');
+        SET i = i + 1;
+    END WHILE;
+END //
+DELIMITER ;
+CALL SeedLargeData();
+DROP PROCEDURE SeedLargeData;
+
+-- Force InnoDB to update statistics so EXPLAIN is accurate immediately
+ANALYZE TABLE customers;
+ANALYZE TABLE orders;
