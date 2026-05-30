@@ -3,6 +3,7 @@ import { z } from "zod";
 import Fuse from "fuse.js";
 import { pool } from "../db/index.js";
 import { schemaGraph } from "../db/schema.js";
+import { getTableSemantics } from "../db/metadata.js";
 
 async function getTableDDL(tableName: string): Promise<string | null> {
     try {
@@ -73,11 +74,21 @@ export async function handleSearchSchema({ query }: { query: string }) {
     for (const tableName of tablesToFetch) {
         const ddl = await getTableDDL(tableName);
         if (ddl) {
-            // Only add the table name header if it's not the primary target
             let header = tableName === targetTable.name 
                 ? `-- === MATCHED TABLE ===\n` 
                 : `-- === RELATED TABLE ===\n`;
-            ddls.push(header + ddl + ";\n");
+            
+            let tableStr = header + ddl + ";\n";
+            
+            // Append Semantics
+            const semantics = getTableSemantics(tableName);
+            if (Object.keys(semantics).length > 0) {
+                tableStr += `/* SEMANTIC DICTIONARY:\n`;
+                tableStr += JSON.stringify(semantics, null, 2);
+                tableStr += `\n*/\n`;
+            }
+            
+            ddls.push(tableStr);
         }
     }
 
@@ -86,6 +97,8 @@ export async function handleSearchSchema({ query }: { query: string }) {
     if (inferredHints.length > 0) {
         output += "\n-- === HEURISTIC GRAPH HINTS ===\n" + inferredHints.join("\n");
     }
+
+    output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `get_query_templates` tool first to fetch the official template. */";
 
     return {
         content: [{ type: "text" as const, text: output }]

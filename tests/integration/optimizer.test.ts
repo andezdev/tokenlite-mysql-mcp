@@ -33,12 +33,12 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
 
     it('should allow queries that scan fewer rows than the threshold', async () => {
         // Suppose we have a small table (e.g. categories might only have 2 rows)
-        // Wait, orders only has 2 rows... let's temporarily set threshold to 1000
-        process.env.MCP_SAFE_QUERY_MAX_ROWS = '1000';
+        // Wait, orders only has 2 rows... let's temporarily set threshold to 2000
+        process.env.MCP_SAFE_QUERY_MAX_ROWS = '2000';
         
         const sql = "SELECT * FROM orders";
         
-        // Now it shouldn't throw because rows (3) < 1000
+        // Now it shouldn't throw because estimated rows (~1502) < 2000
         await expect(analyzeQueryPlan(sql, pool)).resolves.toBeUndefined();
         
         // Revert threshold back

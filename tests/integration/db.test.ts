@@ -8,7 +8,13 @@ describe('Database Integration', () => {
     });
 
     it('should truncate queries without LIMIT to 500 rows', async () => {
+        // Temporarily set high threshold so the Optimizer doesn't block the full table scan
+        const originalThreshold = process.env.MCP_SAFE_QUERY_MAX_ROWS;
+        process.env.MCP_SAFE_QUERY_MAX_ROWS = '5000';
+        
         const rows = await executeSafeQuery('SELECT * FROM customers');
-        expect(Array.isArray(rows)).toBe(true);
+        expect(rows.length).toBe(500); // Because of AST limit injection
+        
+        process.env.MCP_SAFE_QUERY_MAX_ROWS = originalThreshold;
     });
 });

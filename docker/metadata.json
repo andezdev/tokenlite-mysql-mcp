@@ -1,0 +1,9 @@
+{
+  "orders.status": {
+    "pending": "The user has checked out but payment is still processing or order is being prepared.",
+    "shipped": "The item is physically with the courier and in transit to the customer.",
+    "delivered": "The customer has received the package."
+  },
+  "customers.created_at": "UTC timestamp of when the user first registered on our platform.",
+  "order_items.quantity": "Number of units purchased for this specific product in the given order."
+}
