@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 // Supress dotenv logs so they don't corrupt the MCP JSON-RPC stdout stream
 (dotenv.config as any)({ quiet: true });
 
-const pool = mysql.createPool({
+export const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'root',
@@ -15,6 +15,10 @@ const pool = mysql.createPool({
     queueLimit: 0,
     connectTimeout: 10000 // 10 seconds
 });
+
+export function getDbName(): string {
+    return process.env.DB_NAME || 'test';
+}
 
 /**
  * Executes a safe query with a Timeout.
