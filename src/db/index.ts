@@ -12,9 +12,9 @@ export const pool = mysql.createPool({
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'test',
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10', 10),
     queueLimit: 0,
-    connectTimeout: 10000 // 10 seconds
+    connectTimeout: parseInt(process.env.MYSQL_CONNECT_TIMEOUT || '10000', 10)
 });
 
 // Session-Level Defense in Depth

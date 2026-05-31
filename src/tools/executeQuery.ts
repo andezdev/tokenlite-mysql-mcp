@@ -27,8 +27,11 @@ export async function handleExecuteQuery({ sql }: { sql: string }) {
         }
     } catch (error: any) {
         let errorMessage = error.name === 'OptimizerError' ? error.message : `Database Error: ${error.message}`;
+        
         if (error.code === 'ER_BAD_FIELD_ERROR' || error.message?.includes('Unknown column')) {
             errorMessage += `\n\nHint: If you believe this column exists, the DBA might have just added it. Please call the 'refresh_schema' tool and try again.`;
+        } else if (error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.message?.includes('timeout')) {
+            errorMessage += `\n\nHint: The query took too long and was aborted to protect the database (DoS protection). Please optimize your query by using better filters, utilizing indexes, or ask the user to increase the MYSQL_QUERY_TIMEOUT.`;
         }
 
         return {

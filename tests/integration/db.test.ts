@@ -56,4 +56,23 @@ describe('Database Integration - Security & Limits', () => {
         delete process.env.ALLOW_INSERT_OPERATION;
         delete process.env.ALLOW_DDL_OPERATION;
     });
+
+    it('should throw a timeout error when a query exceeds MYSQL_QUERY_TIMEOUT', async () => {
+        // Enforce a tiny timeout (100ms)
+        const originalTimeout = process.env.MYSQL_QUERY_TIMEOUT;
+        process.env.MYSQL_QUERY_TIMEOUT = '100';
+
+        try {
+            // Attempt to sleep for 500ms
+            await executeSafeQuery('SELECT SLEEP(0.5)');
+            // Should not reach here
+            expect(true).toBe(false);
+        } catch (error: any) {
+            expect(error.code).toBe('PROTOCOL_SEQUENCE_TIMEOUT');
+            expect(error.message).toMatch(/timeout/i);
+        } finally {
+            if (originalTimeout) process.env.MYSQL_QUERY_TIMEOUT = originalTimeout;
+            else delete process.env.MYSQL_QUERY_TIMEOUT;
+        }
+    });
 });
