@@ -91,3 +91,15 @@ export async function pingDb(): Promise<boolean> {
         return false;
     }
 }
+
+/**
+ * Gracefully shuts down the MySQL connection pool.
+ */
+export async function closePool(): Promise<void> {
+    try {
+        await pool.end();
+        console.error('[tokenlite-mysql-mcp] Database connection pool closed gracefully.');
+    } catch (error: any) {
+        console.error('[tokenlite-mysql-mcp] Error closing database connection pool:', error.message);
+    }
+}

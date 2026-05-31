@@ -7,6 +7,7 @@ import { registerRefreshSchemaTool } from "./tools/refreshSchema.js";
 import { registerTemplatesPrompt } from "./prompts/templates.js";
 import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
+import { closePool } from "./db/index.js";
 import dotenv from "dotenv";
 
 dotenv.config({ quiet: true });
@@ -38,6 +39,16 @@ async function main() {
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    
+    const cleanup = async () => {
+        console.error('\n[tokenlite-mysql-mcp] Shutting down server...');
+        await server.close();
+        await closePool();
+        process.exit(0);
+    };
+
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
 }
 
 main().catch(console.error);
