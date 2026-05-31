@@ -4,6 +4,21 @@ import { TableNode, ForeignKey } from './types.js';
 export let schemaGraph = new Map<string, TableNode>();
 
 /**
+ * Retrieves the raw DDL (CREATE TABLE) statement for a given table.
+ */
+export async function getTableDDL(tableName: string): Promise<string | null> {
+    try {
+        const [rows] = await pool.query<any[]>(`SHOW CREATE TABLE \`${tableName}\``);
+        if (rows && rows.length > 0) {
+            return rows[0]['Create Table'] || rows[0]['Create View'];
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
  * Connects to the database and builds the relational graph in-memory.
  * Optimized for low RAM usage by only extracting node names and edges (no DDL/Columns cached).
  */

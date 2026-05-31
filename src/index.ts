@@ -5,6 +5,7 @@ import { registerExecuteQueryTool } from "./tools/executeQuery.js";
 import { registerSearchSchemaTool } from "./tools/searchSchema.js";
 import { registerRefreshSchemaTool } from "./tools/refreshSchema.js";
 import { registerTemplatesPrompt } from "./prompts/templates.js";
+import { registerTableResources } from "./resources/tables.js";
 import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
 import { closePool } from "./db/index.js";
@@ -31,11 +32,12 @@ async function main() {
         prefix = `db_${randomStr}_`;
     }
 
-    // Register MCP Tools
+    // Register MCP tools & prompts & resources
     registerSearchSchemaTool(server, prefix);
     registerExecuteQueryTool(server, prefix);
     registerRefreshSchemaTool(server, prefix);
     registerTemplatesPrompt(server, prefix);
+    registerTableResources(server);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

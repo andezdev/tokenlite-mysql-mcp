@@ -2,20 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import Fuse from "fuse.js";
 import { pool } from "../db/index.js";
-import { schemaGraph } from "../db/schema.js";
+import { schemaGraph, getTableDDL } from "../db/schema.js";
 import { getTableSemantics } from "../db/metadata.js";
-
-async function getTableDDL(tableName: string): Promise<string | null> {
-    try {
-        const [rows] = await pool.query<any[]>(`SHOW CREATE TABLE \`${tableName}\``);
-        if (rows && rows.length > 0) {
-            return rows[0]['Create Table'] || rows[0]['Create View'];
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
-}
 
 
 export async function handleSearchSchema({ query }: { query: string }) {
