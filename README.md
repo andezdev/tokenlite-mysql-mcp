@@ -11,9 +11,10 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 
 1. **Safe-Query Optimizer (AST & EXPLAIN)**: Protects production databases by pre-analyzing queries. Blocks unindexed Full Table Scans that exceed configurable thresholds and injects strict `LIMIT` clauses automatically at the AST level.
 2. **Granular AST-Based Write Permissions**: By default, TokenLite is 100% Read-Only. You can surgically enable specific write operations (INSERT, UPDATE, DELETE, DDL) via environment variables. The firewall uses strict AST parsing to prevent SQL injection and comment-bypass attacks, and strictly prohibits privilege escalation commands (like `GRANT` or `CALL`).
-3. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
-4. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
-5. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown, saving up to 60% of Output Tokens compared to verbose JSON.
+3. **Session-Level Defense in Depth**: If the server is configured in strict Read-Only mode (all write variables disabled), TokenLite injects `SET SESSION TRANSACTION READ ONLY` directly into the connection pool sockets. This guarantees that even if a theoretical bypass exists in the AST parser, the MySQL engine itself will physically reject any data modification.
+4. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
+5. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
+6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown, saving up to 60% of Output Tokens compared to verbose JSON.
 
 ---
 

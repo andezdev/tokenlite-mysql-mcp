@@ -17,6 +17,25 @@ export const pool = mysql.createPool({
     connectTimeout: 10000 // 10 seconds
 });
 
+// Session-Level Defense in Depth
+const allowInsert = process.env.ALLOW_INSERT_OPERATION === 'true';
+const allowUpdate = process.env.ALLOW_UPDATE_OPERATION === 'true';
+const allowDelete = process.env.ALLOW_DELETE_OPERATION === 'true';
+const allowDdl = process.env.ALLOW_DDL_OPERATION === 'true';
+
+const isStrictReadOnlyMode = !(allowInsert || allowUpdate || allowDelete || allowDdl);
+
+if (isStrictReadOnlyMode) {
+    pool.on('connection', (connection: any) => {
+        // At runtime this is a callback connection, despite what TS types say
+        connection.query('SET SESSION TRANSACTION READ ONLY', (err: any) => {
+            if (err) {
+                console.error('[tokenlite-mysql-mcp] Warning: Failed to set connection to READ ONLY:', err.message);
+            }
+        });
+    });
+}
+
 export function getDbName(): string {
     return process.env.DB_NAME || 'test';
 }

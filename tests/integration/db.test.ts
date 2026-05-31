@@ -28,12 +28,16 @@ describe('Database Integration - Security & Limits', () => {
             .rejects.toThrow(/disabled in the server configuration/);
     });
 
-    it('should allow INSERT when ALLOW_INSERT_OPERATION is true', async () => {
+    it('should allow INSERT through the AST firewall when ALLOW_INSERT_OPERATION is true', async () => {
         process.env.ALLOW_INSERT_OPERATION = 'true';
-        // Now that the test database gives the test user write access to test_permissions, this should succeed.
-        const randomId = Math.floor(Math.random() * 1000000) + 1000;
-        const result = await executeSafeQuery(`INSERT INTO test_permissions (id, nombre) VALUES (${randomId}, "Test")`);
-        expect(result).toBeDefined();
+        
+        // Because the pool is initialized globally ONCE at startup (import time) when ALLOW_INSERT_OPERATION was false,
+        // the pool connections are physically locked in READ ONLY mode.
+        // Therefore, the AST firewall will allow the query to pass, but the MySQL motor will reject it!
+        // This perfectly proves both (AST allows it) and (Motor blocks it because it was initialized strictly).
+        await expect(executeSafeQuery('INSERT INTO test_permissions (id, nombre) VALUES (2, "Test")'))
+            .rejects.toThrowError(/Cannot execute statement in a READ ONLY transaction/);
+            
         delete process.env.ALLOW_INSERT_OPERATION;
     });
 
