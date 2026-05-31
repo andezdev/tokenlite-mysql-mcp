@@ -1,10 +1,20 @@
 -- Create read-only user for the MCP
 CREATE USER 'mcp_test'@'%' IDENTIFIED BY 'mcp_password';
+
+CREATE DATABASE IF NOT EXISTS mcp_test_db;
+USE mcp_test_db;
+
+-- 0. Dummy Table for AST Firewall Testing
+CREATE TABLE test_permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL
+);
+
 -- Grant Read-Only permissions (Defense in Depth)
 GRANT SELECT, SHOW VIEW ON mcp_test_db.* TO 'mcp_test'@'%';
+-- Grant Write permissions ONLY to the dummy table for testing AST Firewall
+GRANT INSERT, UPDATE, DELETE, DROP ON mcp_test_db.test_permissions TO 'mcp_test'@'%';
 FLUSH PRIVILEGES;
-
-USE mcp_test_db;
 
 -- 1. Customers (Root node)
 CREATE TABLE customers (

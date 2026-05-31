@@ -22,18 +22,43 @@ export function getDbName(): string {
 }
 
 /**
- * Executes a safe query with a Timeout.
+ * Executes a safe query with a Timeout and Granular Permissions.
  */
 export async function executeSafeQuery(sql: string): Promise<any[]> {
     // AST Validation and Limit Injection
-    const astOptimizedSql = injectLimitAst(sql);
+    const { sql: astOptimizedSql, astType } = injectLimitAst(sql);
 
-    // Pre-flight Analysis
-    await analyzeQueryPlan(astOptimizedSql, pool);
+    // Permission Enforcement
+    if (astType !== 'select' && astType !== 'show') {
+        const blockedTypes = ['call', 'grant', 'revoke', 'set', 'use'];
+        if (blockedTypes.includes(astType)) {
+            throw new Error(`Security Error: Dangerous operation '${astType}' is strictly prohibited.`);
+        }
+
+        const allowInsert = process.env.ALLOW_INSERT_OPERATION === 'true';
+        const allowUpdate = process.env.ALLOW_UPDATE_OPERATION === 'true';
+        const allowDelete = process.env.ALLOW_DELETE_OPERATION === 'true';
+        const allowDdl = process.env.ALLOW_DDL_OPERATION === 'true';
+
+        let isAllowed = false;
+        if ((astType === 'insert' || astType === 'replace') && allowInsert) isAllowed = true;
+        else if (astType === 'update' && allowUpdate) isAllowed = true;
+        else if ((astType === 'delete' || astType === 'truncate') && allowDelete) isAllowed = true;
+        else if (['create', 'alter', 'drop', 'rename'].includes(astType) && allowDdl) isAllowed = true;
+
+        if (!isAllowed) {
+            throw new Error(`Security Error: Operation '${astType}' is disabled in the server configuration.`);
+        }
+    }
+
+    // Pre-flight Analysis (Only blocks full table scans on SELECT)
+    if (astType === 'select') {
+        await analyzeQueryPlan(astOptimizedSql, pool);
+    }
 
     const [rows] = await pool.query({
         sql: astOptimizedSql,
-        timeout: 15000
+        timeout: parseInt(process.env.MYSQL_QUERY_TIMEOUT || '15000', 10)
     });
     
     return rows as any[];

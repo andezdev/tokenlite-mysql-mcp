@@ -10,9 +10,10 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 ## 🌟 Core Pillars
 
 1. **Safe-Query Optimizer (AST & EXPLAIN)**: Protects production databases by pre-analyzing queries. Blocks unindexed Full Table Scans that exceed configurable thresholds and injects strict `LIMIT` clauses automatically at the AST level.
-2. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes a Semantic Template Search tool (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
-3. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
-4. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown, saving up to 60% of Output Tokens compared to verbose JSON.
+2. **Granular AST-Based Write Permissions**: By default, TokenLite is 100% Read-Only. You can surgically enable specific write operations (INSERT, UPDATE, DELETE, DDL) via environment variables. The firewall uses strict AST parsing to prevent SQL injection and comment-bypass attacks, and strictly prohibits privilege escalation commands (like `GRANT` or `CALL`).
+3. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
+4. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
+5. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown, saving up to 60% of Output Tokens compared to verbose JSON.
 
 ---
 
@@ -98,6 +99,11 @@ To use within Cursor IDE:
 | `MCP_SAFE_QUERY_ENABLE_BLOCKING`| Enable or disable the EXPLAIN guardrail. | `true` | No |
 | `MCP_METADATA_PATH` | Absolute path to your custom `metadata.json` dictionary. | (Disabled) | No |
 | `MCP_TEMPLATES_PATH` | Absolute path to your custom `templates.json` queries. | (Disabled) | No |
+| `TOOL_PREFIX` | Prefix for tool names (useful when running multiple instances). | Random (e.g., `db_a1b2_`) | No |
+| `ALLOW_INSERT_OPERATION` | Enable `INSERT` and `REPLACE` queries. | `false` | No |
+| `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
+| `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |
+| `ALLOW_DDL_OPERATION` | Enable Data Definition Language (`CREATE`, `ALTER`, `DROP`, `RENAME`). | `false` | No |
 
 ---
 

@@ -21,11 +21,11 @@ function isBlockingEnabled(): boolean {
 }
 
 /**
- * Parses the SQL query to AST, injects a LIMIT if missing, and returns the modified SQL.
+ * Parses the SQL query to AST, injects a LIMIT if missing for SELECTs, and returns the modified SQL and AST type.
  */
-export function injectLimitAst(sql: string, maxLimit: number = 500): string {
+export function injectLimitAst(sql: string, maxLimit: number = 500): { sql: string; astType: string } {
     if (sql.trim().toUpperCase().startsWith('SHOW')) {
-        return sql;
+        return { sql, astType: 'show' };
     }
 
     try {
@@ -39,29 +39,31 @@ export function injectLimitAst(sql: string, maxLimit: number = 500): string {
             }
             ast = ast[0];
         }
+        
+        // @ts-ignore
+        const type = ast.type?.toLowerCase();
 
-        if (ast.type !== 'select') {
-            throw new OptimizerError("Security Error: Only SELECT or SHOW statements are allowed.");
-        }
-
-        if (!ast.limit) {
-            ast.limit = {
-                seperator: "",
-                value: [
-                    { type: 'number', value: maxLimit }
-                ]
-            };
-        } else {
-            // Check if existing limit exceeds maxLimit
-            // @ts-ignore
-            const limitValue = ast.limit.value[0]?.value;
-            if (typeof limitValue === 'number' && limitValue > maxLimit) {
-                // @ts-ignore
-                ast.limit.value[0].value = maxLimit;
+        // Only inject LIMIT and sqlify if it's a SELECT query.
+        // For DML/DDL, we just return the original SQL to avoid parser mangling.
+        if (type === 'select') {
+            const selectAst = ast as any;
+            if (!selectAst.limit) {
+                selectAst.limit = {
+                    seperator: "",
+                    value: [
+                        { type: 'number', value: maxLimit }
+                    ]
+                };
+            } else {
+                const limitValue = selectAst.limit.value[0]?.value;
+                if (typeof limitValue === 'number' && limitValue > maxLimit) {
+                    selectAst.limit.value[0].value = maxLimit;
+                }
             }
+            return { sql: parser.sqlify(selectAst, astOpt), astType: type };
         }
 
-        return parser.sqlify(ast, astOpt);
+        return { sql, astType: type };
     } catch (e: any) {
         if (e instanceof OptimizerError) {
             throw e;
