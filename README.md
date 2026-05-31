@@ -168,6 +168,26 @@ TokenLite converts raw database rows to a dense, structured CSV layout. This avo
 
 ---
 
+## 🌐 Advanced Networking & Remote Connections
+
+By design, `tokenlite-mysql-mcp` adheres to the Unix philosophy: it does one thing (AI-driven MySQL interactions) and does it securely via the standard `stdio` transport. It deliberately avoids bloating the codebase with HTTP servers or built-in SSH clients. 
+
+If you need to connect to remote databases or expose this server over the network, here are the recommended, enterprise-grade alternatives:
+
+### 1. Connecting to Remote Databases (SSH Tunnels)
+Instead of embedding SSH libraries, we recommend using native OS tunnels. This is much more secure, respects your `~/.ssh/config`, and supports advanced authentication (2FA, hardware keys).
+
+Simply open a terminal and run:
+
+```bash
+ssh -N -L 3306:127.0.0.1:3306 user@your-remote-server.com
+```
+Then, point `tokenlite-mysql-mcp` to `localhost` and port `3306`.
+
+### 2. Exposing the MCP Server over HTTP/Network
+If you need to host this MCP Server in the cloud (AWS, GCP) and have multiple Claude desktop clients connect to it remotely via HTTP/SSE, do not modify this codebase to add Express/HTTP logic. 
+Instead, wrap the process using standard open-source MCP proxies like [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy). This cleanly separates the transport layer security from the AI logic.
+
 ## 🐛 Troubleshooting
 
 **Error: `OptimizerError: Full table scan detected...`**
@@ -179,3 +199,5 @@ This means the MCP JSON-RPC protocol crashed. Ensure you are passing the correct
 
 ---
 *Built for the AI Engineering era.*
+
+---
