@@ -43,7 +43,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "inspect-graph": "tsx scripts/inspect-graph.ts",
-    "benchmark": "tsx scripts/benchmark.ts"
+    "benchmark": "tsx scripts/benchmark.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
@@ -54,8 +55,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@types/node": "^22.10.1",
     "@types/node-sql-parser": "^1.0.0",
+    "husky": "^9.1.7",
     "js-tiktoken": "^1.0.21",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
