@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerExecuteQueryTool } from "./tools/executeQuery.js";
 import { registerSearchSchemaTool } from "./tools/searchSchema.js";
 import { registerRefreshSchemaTool } from "./tools/refreshSchema.js";
-import { registerGetTemplatesTool } from "./tools/getTemplates.js";
+import { registerTemplatesPrompt } from "./prompts/templates.js";
 import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
 import dotenv from "dotenv";
@@ -27,7 +27,7 @@ async function main() {
     registerSearchSchemaTool(server);
     registerExecuteQueryTool(server);
     registerRefreshSchemaTool(server);
-    registerGetTemplatesTool(server);
+    registerTemplatesPrompt(server);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

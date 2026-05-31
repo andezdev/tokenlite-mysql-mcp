@@ -98,20 +98,21 @@ export async function handleSearchSchema({ query }: { query: string }) {
         output += "\n-- === HEURISTIC GRAPH HINTS ===\n" + inferredHints.join("\n");
     }
 
-    output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `get_query_templates` tool first to fetch the official template. */";
+    output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */";
 
     return {
         content: [{ type: "text" as const, text: output }]
     };
 }
 
-export function registerSearchSchemaTool(server: McpServer) {
+export function registerSearchSchemaTool(server: McpServer, prefix: string = "") {
     server.tool(
-        "search_schema",
+        `${prefix}search_schema`,
         "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this tool FIRST to understand the database structure. Searches for a table and returns its exact SQL DDL, along with the DDL of its direct parent and child tables (Auto-Join Context). Do NOT use execute_safe_query for schema exploration.",
         {
             query: z.string().describe("The name of the table or entity to search for (e.g. 'users', 'invoices')."),
         },
+        { readOnlyHint: true },
         handleSearchSchema
     );
 }
