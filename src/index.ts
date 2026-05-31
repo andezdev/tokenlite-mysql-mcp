@@ -23,11 +23,18 @@ async function main() {
     // Load Metadata and Templates
     initMetadata();
 
+    // Generate or use provided tool prefix (dev_, prod_ ...)
+    let prefix = process.env.TOOL_PREFIX; 
+    if (!prefix) {
+        const randomStr = Math.random().toString(36).substring(2, 6);
+        prefix = `db_${randomStr}_`;
+    }
+
     // Register MCP Tools
-    registerSearchSchemaTool(server);
-    registerExecuteQueryTool(server);
-    registerRefreshSchemaTool(server);
-    registerTemplatesPrompt(server);
+    registerSearchSchemaTool(server, prefix);
+    registerExecuteQueryTool(server, prefix);
+    registerRefreshSchemaTool(server, prefix);
+    registerTemplatesPrompt(server, prefix);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
