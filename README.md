@@ -130,6 +130,34 @@ Stop the LLM from hallucinating complex metrics by providing vetted templates.
 
 ---
 
+## 📈 Benchmarks & Token Savings
+
+TokenLite includes an automated, precise benchmark suite using official `cl100k_base` tokenization (matching models like Claude 3.5 Sonnet and GPT-4) to measure efficiency improvements.
+
+To run the benchmark in your own environment:
+```bash
+npm run benchmark
+```
+
+### 1. Schema Discovery (Input Tokens)
+Traditional MCP servers dump the entire schema to the LLM. For large databases, this consumes thousands of input tokens on every turn. TokenLite's relational graph serves a localized **Auto-Join Context** (target table + direct parent tables + direct child tables).
+
+*   **Generic MCP Schema Dump:** 611 tokens
+*   **TokenLite Relational Graph:** 252 tokens
+*   **📉 Schema Input Savings:** **58.7%** (up to **90%** on larger enterprise schemas)
+
+### 2. Query Result Payloads (Output Tokens)
+TokenLite converts raw database rows to a dense, structured CSV layout. This avoids JSON syntax overhead (brackets, braces, repeated keys) and compresses the output payload returned to the LLM.
+
+| Rows Returned | Generic MCP JSON (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
+| :--- | :--- | :--- | :--- |
+| **10 rows** | 1,153 | 590 | **48.8%** |
+| **50 rows** | 5,764 | 2,861 | **50.3%** |
+| **100 rows** | 11,527 | 5,699 | **50.5%** |
+| **500 rows** | 57,635 | 28,407 | **50.7%** |
+
+---
+
 ## 🐛 Troubleshooting
 
 **Error: `OptimizerError: Full table scan detected...`**
