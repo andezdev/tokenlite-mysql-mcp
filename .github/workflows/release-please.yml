@@ -39,7 +39,7 @@ jobs:
 
       - name: Start MySQL Database via Docker Compose
         if: ${{ steps.release.outputs.release_created }}
-        run: docker-compose -f docker/docker-compose.yml up -d
+        run: docker compose -f docker/docker-compose.yml up -d
         
       - name: Wait for MySQL to be ready
         if: ${{ steps.release.outputs.release_created }}
