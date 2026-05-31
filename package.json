@@ -1,6 +1,6 @@
 {
   "name": "@andezdev/tokenlite-mysql-mcp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A secure, efficient, and intelligent MySQL server for the Model Context Protocol",
   "main": "dist/index.js",
   "type": "module",
