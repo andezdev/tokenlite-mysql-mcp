@@ -34,4 +34,9 @@ jobs:
         echo "MySQL is up and running!"
 
     - name: Run Tests
+      env:
+        DB_PORT: 3307
+        DB_USER: root
+        DB_PASSWORD: root
+        DB_NAME: mcp_test_db
       run: npm test
