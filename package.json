@@ -39,6 +39,7 @@
   "homepage": "https://github.com/andezdev/tokenlite-mysql-mcp#readme",
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
