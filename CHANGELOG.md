@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/v1.0.0...v2.0.0) (2026-05-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `get_query_templates` tool has been removed and replaced by the `query_templates` Prompt. Any automated client relying on the tool will need to use the Prompts API instead.
+
+### Features
+
+* add configurable database connection and query timeouts ([9b33835](https://github.com/andezdev/tokenlite-mysql-mcp/commit/9b33835e5499834827e25947cda9aca16b548920))
+* add graceful shutdown for the MCP server and database pool ([55e648a](https://github.com/andezdev/tokenlite-mysql-mcp/commit/55e648a8f69b7b5e7541bf021c667625791d6878))
+* add session-level defense in depth for strict read-only mode ([f551913](https://github.com/andezdev/tokenlite-mysql-mcp/commit/f5519136156e551c121d800eaf3bb5c0bbf4ce51))
+* auto-generate random prefix for tools and prompts ([cdb3543](https://github.com/andezdev/tokenlite-mysql-mcp/commit/cdb3543b1506901a2c5a609cc76da78b234e081b))
+* expose database tables as native MCP Resources ([5f3ee9c](https://github.com/andezdev/tokenlite-mysql-mcp/commit/5f3ee9c7b169623f3447b7ea98268f50a71ce103))
+* migrate templates to official MCP Prompts and add tool annotations ([721265d](https://github.com/andezdev/tokenlite-mysql-mcp/commit/721265d9e12703d004f10189a5e75f9356021ecd))
+* support DML and DDL operations in execute_safe_query ([7445ffb](https://github.com/andezdev/tokenlite-mysql-mcp/commit/7445ffb50385bcd02870a47e3759789db1a470bd))
+
 ## 1.0.0 (2026-05-31)
 
 
