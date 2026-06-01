@@ -77,7 +77,7 @@ jobs:
 
       - name: Prune devDependencies for Bundle
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: npm install --omit=dev
+        run: npm install --omit=dev --ignore-scripts
 
       - name: Pack MCPB Bundle
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
