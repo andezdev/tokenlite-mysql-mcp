@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import Fuse from 'fuse.js';
 import dotenv from 'dotenv';
+import { log } from '../utils/logger.js';
 
 (dotenv.config as any)({ quiet: true });
 
@@ -21,9 +22,9 @@ export function initMetadata() {
         try {
             const raw = fs.readFileSync(metadataPath, 'utf8');
             metadataCache = JSON.parse(raw);
-            console.error(`[tokenlite-mysql-mcp] Loaded metadata dictionary from ${metadataPath}`);
+            log("info", `Loaded metadata dictionary from ${metadataPath}`, "metadata");
         } catch (err) {
-            console.error(`[tokenlite-mysql-mcp] Error loading metadata.json:`, err);
+            log("error", `Error loading metadata.json: ${err}`, "metadata");
         }
     }
 
@@ -37,9 +38,9 @@ export function initMetadata() {
                 threshold: 0.5,
                 ignoreLocation: true
             });
-            console.error(`[tokenlite-mysql-mcp] Loaded ${templatesCache.length} SQL templates from ${templatesPath}`);
+            log("info", `Loaded ${templatesCache.length} SQL templates from ${templatesPath}`, "metadata");
         } catch (err) {
-            console.error(`[tokenlite-mysql-mcp] Error loading templates.json:`, err);
+            log("error", `Error loading templates.json: ${err}`, "metadata");
         }
     }
 }

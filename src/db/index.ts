@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import { injectLimitAst, analyzeQueryPlan } from './optimizer.js';
+import { log } from '../utils/logger.js';
 
 // Supress dotenv logs so they don't corrupt the MCP JSON-RPC stdout stream
 (dotenv.config as any)({ quiet: true });
@@ -40,7 +41,7 @@ export const pool = mysql.createPool({
 });
 
 pool.pool.on('enqueue', () => {
-    console.error(`[tokenlite-mysql-mcp] Warning: All connections busy, request queued (limit: ${QUEUE_LIMIT}).`);
+    log("warning", `All connections busy, request queued (limit: ${QUEUE_LIMIT}).`, "pool");
 });
 
 // Session-Level Defense in Depth
@@ -56,7 +57,7 @@ if (isStrictReadOnlyMode) {
         // At runtime this is a callback connection, despite what TS types say
         connection.query('SET SESSION TRANSACTION READ ONLY', (err: any) => {
             if (err) {
-                console.error('[tokenlite-mysql-mcp] Warning: Failed to set connection to READ ONLY:', err.message);
+                log("warning", `Failed to set connection to READ ONLY: ${err.message}`, "pool");
             }
         });
     });
@@ -125,7 +126,7 @@ async function queryWithRetry(opts: { sql: string; timeout?: number }): Promise<
 
             if (attempt < MAX_RETRY_ATTEMPTS) {
                 const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-                console.error(`[tokenlite-mysql-mcp] Connection error (${error.code}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS})...`);
+                log("warning", `Connection error (${error.code}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS})...`, "pool");
                 await sleep(delay);
             }
         }
@@ -149,8 +150,8 @@ export async function pingDb(): Promise<boolean> {
 export async function closePool(): Promise<void> {
     try {
         await pool.end();
-        console.error('[tokenlite-mysql-mcp] Database connection pool closed gracefully.');
+        log("info", "Database connection pool closed gracefully.", "pool");
     } catch (error: any) {
-        console.error('[tokenlite-mysql-mcp] Error closing database connection pool:', error.message);
+        log("error", `Error closing database connection pool: ${error.message}`, "pool");
     }
 }

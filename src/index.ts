@@ -10,6 +10,7 @@ import { registerTableResources } from "./resources/tables.js";
 import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
 import { closePool } from "./db/index.js";
+import { initLogger, log } from "./utils/logger.js";
 import dotenv from "dotenv";
 
 dotenv.config({ quiet: true });
@@ -18,7 +19,13 @@ async function main() {
     const server = new McpServer({
         name: "tokenlite-mysql-mcp",
         version: "1.0.0",
+    }, {
+        capabilities: {
+            logging: {},
+        },
     });
+
+    initLogger(server);
 
     // Build Semantic Graph on startup
     await buildSchemaGraph();

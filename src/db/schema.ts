@@ -1,5 +1,6 @@
 import { pool, getDbName } from './index.js';
 import { TableNode, ForeignKey } from './types.js';
+import { log } from '../utils/logger.js';
 
 export let schemaGraph = new Map<string, TableNode>();
 
@@ -134,5 +135,5 @@ export async function buildSchemaGraph(): Promise<void> {
 
     invalidateDdlCache();
     schemaGraph = newGraph;
-    console.error(`[tokenlite-mysql-mcp] Schema Graph built successfully. Indexed ${schemaGraph.size} tables.`);
+    log("info", `Schema Graph built successfully. Indexed ${schemaGraph.size} tables.`, "schema");
 }

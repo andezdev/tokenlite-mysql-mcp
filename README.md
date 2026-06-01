@@ -108,6 +108,7 @@ To use within Cursor IDE:
 | `MYSQL_RETRY_DELAY_MS` | Base delay (ms) for exponential backoff between retries (1s, 2s, 4s...). | `1000` | No |
 | `MYSQL_QUEUE_LIMIT` | Max queued requests when all pool connections are busy. Prevents unbounded growth if MySQL is down. | `50` | No |
 | `MCP_DDL_CACHE_TTL` | Time-to-live (in seconds) for cached DDL statements. Reduces latency on repeated `search_schema` calls. Invalidated by `refresh_schema`. | `60` | No |
+| `MCP_LOG_LEVEL` | Minimum severity for MCP log notifications: `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. | `info` | No |
 | `ALLOW_INSERT_OPERATION` | Enable `INSERT` and `REPLACE` queries. | `false` | No |
 | `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
 | `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |
@@ -169,6 +170,18 @@ TokenLite converts raw database rows to a dense, structured CSV layout. This avo
 | **50 rows** | 5,764 | 2,861 | **50.3%** |
 | **100 rows** | 11,527 | 5,699 | **50.5%** |
 | **500 rows** | 57,635 | 28,407 | **50.7%** |
+
+---
+
+## 📊 Logging & Observability
+
+TokenLite uses MCP-native logging via `notifications/message` instead of raw stderr output. Clients that support MCP logging (e.g., MCP Inspector) will receive structured log messages with severity levels, logger names, and JSON data.
+
+**Severity levels** (from least to most severe): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`.
+
+The server emits logs at `info` level and above by default. Control the minimum level via `MCP_LOG_LEVEL` or dynamically at runtime through the MCP `logging/setLevel` request.
+
+Before the MCP session is established (e.g., during pool initialization), logs fall back to stderr.
 
 ---
 
