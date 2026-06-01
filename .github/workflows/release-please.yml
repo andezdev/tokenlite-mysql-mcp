@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,30 +18,30 @@ jobs:
       - id: release
         uses: googleapis/release-please-action@v4
 
-      # --- NPM PUBLISH STEPS ---
-      # only run if a release was actually created by merging the PR
+      # --- NPM & MCP PUBLISH STEPS ---
+      # Runs if a release was created by release-please, OR if triggered manually
       
       - name: Checkout repository
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v4
 
       - name: Use Node.js 20.x
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm ci
 
       - name: Start MySQL Database via Docker Compose
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: docker compose -f docker/docker-compose.yml up -d
         
       - name: Wait for MySQL to be ready
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: |
           echo "Waiting for MySQL to start..."
           while ! mysqladmin ping -h 127.0.0.1 -P 3307 -u root -proot --silent; do
@@ -48,26 +49,34 @@ jobs:
           done
 
       - name: Run Tests
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_USER: mcp_test
+          DB_PASSWORD: mcp_password
+          DB_NAME: mcp_test_db
+          MCP_SAFE_QUERY_MAX_ROWS: 1000
+          MCP_SAFE_QUERY_ENABLE_BLOCKING: true
 
       - name: Build Project
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm run build
 
       - name: Publish to NPM
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm publish --provenance --access public
 
       - name: Install mcp-publisher
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
       - name: Authenticate to MCP Registry
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: ./mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: ./mcp-publisher publish
