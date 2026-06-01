@@ -209,7 +209,7 @@ Instead, wrap the process using standard open-source MCP proxies like [mcp-proxy
 
 **Error: `OptimizerError: Full table scan detected...`**
 The LLM attempted to execute a query that requires scanning thousands of rows without using an index. 
-*Solution*: The LLM will automatically see this error and try to rewrite the query with an indexed `WHERE` clause. If you truly need to scan the whole table, increase `MCP_SAFE_QUERY_MAX_ROWS` in your config.
+*Solution*: Use `explain_query` to see the full EXPLAIN output and understand why the query was blocked. Rewrite the query with an indexed `WHERE` clause. If you truly need to scan the whole table, increase `MCP_SAFE_QUERY_MAX_ROWS` in your config.
 
 **Error: `calling "initialize": invalid character...`**
 This means the MCP JSON-RPC protocol crashed. Ensure you are passing the correct DB credentials and that the database is running and accessible from the machine where the MCP server runs.

@@ -23,7 +23,7 @@
 
 5. **Fixing Optimizer Blocks (Full Table Scans).**
    - **Rule**: If the `execute_safe_query` tool throws an `OptimizerError: Full table scan detected`, it means your query is scanning too many rows without an index.
-   - **Action**: You MUST rewrite the query to include a `WHERE` clause that uses an indexed column (e.g., a primary key or foreign key).
+   - **Action**: Use `explain_query` to see the full EXPLAIN output, then rewrite the query to include a `WHERE` clause that uses an indexed column (e.g., a primary key or foreign key).
 
 ---
 
@@ -49,6 +49,12 @@
 **Use for:** Forcing the server to rescan the database and update its internal graph.
 **Arguments:** None.
 **Use when:** You receive an error that a table or column doesn't exist, implying the schema changed.
+
+### `explain_query`
+**Use for:** Analyzing the execution plan of a SELECT query before running it.
+**Arguments:** `sql` (string) - The SELECT query to analyze.
+**Returns:** The MySQL EXPLAIN output as CSV showing join types, index usage, and estimated row counts.
+**Use when:** Your query was blocked by the optimizer (`OptimizerError`) or you want to verify it uses indexes before executing.
 
 ### `ping`
 **Use for:** Checking if the database connection is alive and healthy.

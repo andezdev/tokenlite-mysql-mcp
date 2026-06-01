@@ -5,6 +5,7 @@ import { registerExecuteQueryTool } from "./tools/executeQuery.js";
 import { registerSearchSchemaTool } from "./tools/searchSchema.js";
 import { registerRefreshSchemaTool } from "./tools/refreshSchema.js";
 import { registerPingTool } from "./tools/ping.js";
+import { registerExplainQueryTool } from "./tools/explainQuery.js";
 import { registerTemplatesPrompt } from "./prompts/templates.js";
 import { registerTableResources } from "./resources/tables.js";
 import { buildSchemaGraph } from "./db/schema.js";
@@ -45,6 +46,7 @@ async function main() {
     registerExecuteQueryTool(server, prefix);
     registerRefreshSchemaTool(server, prefix);
     registerPingTool(server, prefix);
+    registerExplainQueryTool(server, prefix);
     registerTemplatesPrompt(server, prefix);
     registerTableResources(server);
 
