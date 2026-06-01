@@ -6,7 +6,7 @@ export function registerRefreshSchemaTool(server: McpServer, prefix: string = ""
         `${prefix}refresh_schema`,
         "Forces the MCP server to rebuild the internal Schema Graph. Use this if you suspect a DBA recently added a table, column, or foreign key and the search_schema or execute queries are failing.",
         {},
-        { idempotentHint: true },
+        { readOnlyHint: true, idempotentHint: true },
         async () => {
             try {
                 await buildSchemaGraph();

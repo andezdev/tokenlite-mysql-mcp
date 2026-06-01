@@ -56,7 +56,10 @@ export function registerExecuteQueryTool(server: McpServer, prefix: string = "")
         {
             sql: z.string().max(10000).describe("SQL SELECT statement to execute."),
         },
-        { readOnlyHint: isReadOnly },
+        {
+            readOnlyHint: isReadOnly,
+            destructiveHint: allowDelete || allowDdl,
+        },
         handleExecuteQuery
     );
 }

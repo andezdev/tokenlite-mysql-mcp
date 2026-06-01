@@ -100,7 +100,7 @@ export function registerSearchSchemaTool(server: McpServer, prefix: string = "")
         {
             query: z.string().max(200).describe("The name of the table or entity to search for (e.g. 'users', 'invoices')."),
         },
-        { readOnlyHint: true },
+        { readOnlyHint: true, openWorldHint: false },
         handleSearchSchema
     );
 }
