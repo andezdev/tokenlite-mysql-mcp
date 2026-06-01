@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.0.0...tokenlite-mysql-mcp-v3.1.0) (2026-06-01)
+
+
+### Features
+
+* **smithery:** add integration config and automated release pipeline ([62baa96](https://github.com/andezdev/tokenlite-mysql-mcp/commit/62baa9696dcf22acdf2883f99fd0528b01ce543e))
+
 ## [3.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v2.0.0...tokenlite-mysql-mcp-v3.0.0) (2026-06-01)
 
 
