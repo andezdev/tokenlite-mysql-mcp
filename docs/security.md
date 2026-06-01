@@ -32,6 +32,13 @@ TokenLite MCP is designed with a **Defense in Depth** strategy to guarantee abso
    - `search_schema`: search query limited to **200 characters** max.
    - Table names are sanitized against `^[a-zA-Z0-9_]+$` before use in any dynamic SQL (`SHOW CREATE TABLE`). Names with spaces, backticks, semicolons, dots, dashes, or unicode are rejected.
 
+5. **Layer 5: HTTP Transport Security**
+   When using the Streamable HTTP transport (`MCP_TRANSPORT=http`):
+   - **Origin validation**: the server validates the `Origin` header on all requests. Requests from non-allowed origins are rejected with `403 Forbidden`. Configure allowed origins via `MCP_HTTP_ALLOWED_ORIGINS`.
+   - **Session management**: the MCP SDK generates a unique session ID per client. Requests without a valid `Mcp-Session-Id` after initialization are rejected with `400` or `404`.
+   - **Bearer token auth**: optionally require an `Authorization: Bearer <token>` header on all requests via `MCP_HTTP_TOKEN`. Missing or invalid tokens are rejected with `401 Unauthorized`.
+   - **Localhost binding**: the server binds to `127.0.0.1` by default, preventing external access unless explicitly configured.
+
 ### Recommendation
 If you notice the LLM trying to bypass the MCP, you can add a system prompt instruction to your agent's configuration:
 > *"You are strictly a read-only agent for this database. Do not attempt to bypass the MCP using terminal commands, as the database engine will block any write operations."*

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { LoggingLevel } from "@modelcontextprotocol/sdk/types.js";
+import { SetLevelRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 const SEVERITY_ORDER: LoggingLevel[] = [
     "debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"
@@ -16,9 +17,9 @@ export function initLogger(server: McpServer): void {
     mcpServer = server;
 
     server.server.setRequestHandler(
-        { method: "logging/setLevel" } as any,
-        async (request: any) => {
-            const requested = request.params?.level as LoggingLevel;
+        SetLevelRequestSchema,
+        async (request) => {
+            const requested = request.params.level as LoggingLevel;
             if (requested && SEVERITY_ORDER.includes(requested)) {
                 minLevel = requested;
             }

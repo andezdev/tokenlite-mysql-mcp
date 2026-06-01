@@ -109,6 +109,11 @@ To use within Cursor IDE:
 | `MYSQL_QUEUE_LIMIT` | Max queued requests when all pool connections are busy. Prevents unbounded growth if MySQL is down. | `50` | No |
 | `MCP_DDL_CACHE_TTL` | Time-to-live (in seconds) for cached DDL statements. Reduces latency on repeated `search_schema` calls. Invalidated by `refresh_schema`. | `60` | No |
 | `MCP_LOG_LEVEL` | Minimum severity for MCP log notifications: `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. | `info` | No |
+| `MCP_TRANSPORT` | Transport mode: `stdio` (default) or `http`. | `stdio` | No |
+| `MCP_HTTP_PORT` | Port for HTTP transport. | `3000` | No |
+| `MCP_HTTP_HOST` | Bind address for HTTP transport. | `127.0.0.1` | No |
+| `MCP_HTTP_TOKEN` | Bearer token for HTTP authentication (disabled if not set). | (Disabled) | No |
+| `MCP_HTTP_ALLOWED_ORIGINS` | Comma-separated list of allowed Origin hostnames for HTTP transport. | `localhost,127.0.0.1` | No |
 | `ALLOW_INSERT_OPERATION` | Enable `INSERT` and `REPLACE` queries. | `false` | No |
 | `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
 | `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |
@@ -202,25 +207,46 @@ Before the MCP session is established (e.g., during pool initialization), logs f
 
 ---
 
-## 🌐 Advanced Networking & Remote Connections
+## 🌐 Transports & Remote Connections
 
-By design, `tokenlite-mysql-mcp` adheres to the Unix philosophy: it does one thing (AI-driven MySQL interactions) and does it securely via the standard `stdio` transport. It deliberately avoids bloating the codebase with HTTP servers or built-in SSH clients. 
+TokenLite supports two MCP transports:
 
-If you need to connect to remote databases or expose this server over the network, here are the recommended, enterprise-grade alternatives:
+### 1. Stdio (Default)
+The standard transport for local use. The MCP client launches the server as a subprocess and communicates via stdin/stdout. No configuration needed — this is the default.
 
-### 1. Connecting to Remote Databases (SSH Tunnels)
-Instead of embedding SSH libraries, we recommend using native OS tunnels. This is much more secure, respects your `~/.ssh/config`, and supports advanced authentication (2FA, hardware keys).
+### 2. Streamable HTTP
+For remote deployments, TokenLite supports the official MCP Streamable HTTP transport. Set `MCP_TRANSPORT=http` to enable it:
 
-Simply open a terminal and run:
+```bash
+MCP_TRANSPORT=http MCP_HTTP_PORT=3000 MCP_HTTP_TOKEN=your_secret \
+  npx -y @andezdev/tokenlite-mysql-mcp
+```
+
+Then configure your MCP client to connect:
+```json
+{
+  "mcpServers": {
+    "tokenlite-mysql": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer your_secret"
+      }
+    }
+  }
+}
+```
+
+**Security**: the HTTP transport binds to `127.0.0.1` by default, validates the `Origin` header (configurable via `MCP_HTTP_ALLOWED_ORIGINS`), and supports optional bearer token authentication via `MCP_HTTP_TOKEN`. For production deployments exposed to the internet, the MCP spec recommends OAuth — use a reverse proxy (nginx, Caddy) to handle TLS and OAuth in front of TokenLite.
+
+**Limitations**: the current HTTP transport supports a single concurrent session. If multiple clients connect, only the last session is active. For team deployments where multiple developers need concurrent access, run one instance per developer or use a process manager (e.g., PM2) behind a load balancer to route each session to its own instance.
+
+### 3. Connecting to Remote Databases (SSH Tunnels)
+For connecting to remote MySQL servers, we recommend native OS tunnels:
 
 ```bash
 ssh -N -L 3306:127.0.0.1:3306 user@your-remote-server.com
 ```
 Then, point `tokenlite-mysql-mcp` to `localhost` and port `3306`.
-
-### 2. Exposing the MCP Server over HTTP/Network
-If you need to host this MCP Server in the cloud (AWS, GCP) and have multiple Claude desktop clients connect to it remotely via HTTP/SSE, do not modify this codebase to add Express/HTTP logic. 
-Instead, wrap the process using standard open-source MCP proxies like [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy). This cleanly separates the transport layer security from the AI logic.
 
 ## 🐛 Troubleshooting
 

@@ -43,6 +43,21 @@ docker-compose -f docker/docker-compose.yml up -d
 **Cause:** The SQL query exceeds 10,000 characters or the search query exceeds 200 characters. These limits protect against excessive payloads from a buggy or adversarial LLM.
 **Solution:** Simplify the query. If you genuinely need longer SQL, consider breaking it into smaller queries or using CTEs.
 
+## HTTP: 403 Forbidden (Origin not allowed)
+**Symptom:** HTTP requests fail with `403 Forbidden: Origin not allowed`.
+**Cause:** The request's `Origin` header is not in the allowed list. By default, only `localhost` and `127.0.0.1` are allowed.
+**Solution:** Add your origin to `MCP_HTTP_ALLOWED_ORIGINS` (comma-separated), e.g. `MCP_HTTP_ALLOWED_ORIGINS=localhost,127.0.0.1,app.example.com`.
+
+## HTTP: 401 Unauthorized
+**Symptom:** HTTP requests fail with `401 Unauthorized`.
+**Cause:** `MCP_HTTP_TOKEN` is set but the request is missing the `Authorization: Bearer <token>` header or the token doesn't match.
+**Solution:** Include the correct bearer token in the `Authorization` header of all requests.
+
+## HTTP: 404 Not Found (session expired)
+**Symptom:** HTTP requests that were working suddenly return `404`.
+**Cause:** The MCP session was terminated or expired. This can happen if the server restarted or a DELETE request was sent.
+**Solution:** Re-initialize the MCP session by sending a new `initialize` request.
+
 ## OptimizerError: Full table scan detected
 **Symptom:** `execute_safe_query` throws an error about Full Table Scans.
 **Cause:** The query executed by the LLM tried to read too many rows without an index.
