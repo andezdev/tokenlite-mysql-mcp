@@ -147,29 +147,46 @@ Stop the LLM from hallucinating complex metrics by providing vetted templates.
 
 ## 📈 Benchmarks & Token Savings
 
-TokenLite includes an automated, precise benchmark suite using official `cl100k_base` tokenization (matching models like Claude 3.5 Sonnet and GPT-4) to measure efficiency improvements.
+TokenLite includes an automated benchmark suite using `o200k_base` tokenization (GPT-4o/GPT-5 standard) to measure efficiency improvements. Token counts are approximate — Claude 4.x uses a proprietary tokenizer; actual counts may vary slightly.
 
 To run the benchmark in your own environment:
 ```bash
 npm run benchmark
 ```
 
-### 1. Schema Discovery (Input Tokens)
-Traditional MCP servers dump the entire schema to the LLM. For large databases, this consumes thousands of input tokens on every turn. TokenLite's relational graph serves a localized **Auto-Join Context** (target table + direct parent tables + direct child tables).
+### Baseline: Standard MCP Pattern
+The benchmark compares against the standard pattern used by generic MySQL MCP servers: full schema exposed as `information_schema.columns` in pretty-printed JSON, and query results returned as `JSON.stringify(rows, null, 2)` with execution time metadata.
 
-*   **Generic MCP Schema Dump:** 611 tokens
-*   **TokenLite Relational Graph:** 252 tokens
-*   **📉 Schema Input Savings:** **58.7%** (up to **90%** on larger enterprise schemas)
+### 1. Schema Discovery (Input Tokens)
+Standard MCP servers dump the entire schema to the LLM. For large databases, this consumes thousands of input tokens on every turn. TokenLite's relational graph serves a localized **Auto-Join Context** (target table + direct parent tables + direct child tables).
+
+| Scenario | Standard MCP Pattern | TokenLite | 📉 Savings |
+| :--- | :--- | :--- | :--- |
+| **Mock (50 tables, Enterprise CRM)** | 15,566 tokens | 883 tokens | **94.3%** |
+| **Live (7 tables, Test DB)** | 1,892 tokens | 257 tokens | **86.4%** |
+
+Savings scale with the number of tables: the more tables in the database, the higher the savings because the standard pattern dumps all of them while TokenLite only fetches the target + 1-hop relationships.
 
 ### 2. Query Result Payloads (Output Tokens)
 TokenLite converts raw database rows to a dense, structured CSV layout. This avoids JSON syntax overhead (brackets, braces, repeated keys) and compresses the output payload returned to the LLM.
 
-| Rows Returned | Generic MCP JSON (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
+**Mock data** (varied: NULLs, long descriptions, mixed lengths):
+
+| Rows Returned | Standard MCP Pattern (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
 | :--- | :--- | :--- | :--- |
-| **10 rows** | 1,153 | 590 | **48.8%** |
-| **50 rows** | 5,764 | 2,861 | **50.3%** |
-| **100 rows** | 11,527 | 5,699 | **50.5%** |
-| **500 rows** | 57,635 | 28,407 | **50.7%** |
+| **10 rows** | 1,167 | 592 | **49.3%** |
+| **50 rows** | 5,805 | 2,875 | **50.5%** |
+| **100 rows** | 11,607 | 5,734 | **50.6%** |
+| **500 rows** | 57,998 | 28,578 | **50.7%** |
+
+**Live data** (real MySQL test database with NULLs, ENUMs, variable-length text):
+
+| Rows Returned | Standard MCP Pattern (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
+| :--- | :--- | :--- | :--- |
+| **10 rows** | 1,007 | 575 | **42.9%** |
+| **50 rows** | 5,029 | 2,845 | **43.4%** |
+| **100 rows** | 10,071 | 5,699 | **43.4%** |
+| **500 rows** | 50,327 | 28,441 | **43.5%** |
 
 ---
 

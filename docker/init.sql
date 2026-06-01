@@ -21,7 +21,12 @@ CREATE TABLE customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    phone VARCHAR(50) DEFAULT NULL,
+    company VARCHAR(255) DEFAULT NULL,
+    tier ENUM('free', 'starter', 'pro', 'enterprise') DEFAULT 'free',
+    notes TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT NULL
 );
 
 -- 2. Shipping Addresses (Explicit FK to customers)
@@ -55,7 +60,11 @@ CREATE TABLE products (
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT NOT NULL,
-    status ENUM('pending', 'shipped', 'delivered') DEFAULT 'pending',
+    status ENUM('pending', 'shipped', 'delivered', 'cancelled', 'refunded') DEFAULT 'pending',
+    total DECIMAL(10,2) DEFAULT NULL,
+    currency VARCHAR(3) DEFAULT 'USD',
+    payment_method VARCHAR(50) DEFAULT NULL,
+    shipping_notes TEXT DEFAULT NULL,
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -71,9 +80,9 @@ CREATE TABLE order_items (
 );
 
 -- SEED DATA
-INSERT INTO customers (name, email) VALUES 
-    ('John Doe', 'john@example.com'),
-    ('Jane Smith', 'jane@example.com');
+INSERT INTO customers (name, email, phone, company, tier, notes) VALUES
+    ('John Doe', 'john@example.com', '+1-555-0101', 'Acme Corp', 'enterprise', 'Key account — annual contract, dedicated support rep assigned'),
+    ('Jane Smith', 'jane@example.com', NULL, NULL, 'free', NULL);
 
 INSERT INTO shipping_addresses (customer_id, street, city, country) VALUES
     (1, '123 Main St', 'New York', 'USA'),
@@ -88,24 +97,46 @@ INSERT INTO products (category_id, name, price, stock) VALUES
     (1, 'Wireless Headphones', 199.50, 100),
     (2, 'TypeScript Mastery', 39.99, 200);
 
-INSERT INTO orders (customer_id, status) VALUES
-    (1, 'shipped'),
-    (2, 'pending');
+INSERT INTO orders (customer_id, status, total, currency, payment_method, shipping_notes) VALUES
+    (1, 'shipped', 1397.50, 'USD', 'credit_card', 'Express delivery requested — fragile items, handle with care'),
+    (2, 'pending', 39.99, 'EUR', 'paypal', NULL);
 
 INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
     (1, 1, 1, 999.00), -- John bought 1 Smartphone
     (1, 2, 2, 199.50), -- John bought 2 Headphones
     (2, 3, 1, 39.99);  -- Jane bought 1 Book
 
--- BULK SEED DATA (For Safe-Query Optimizer Testing)
+-- BULK SEED DATA (For Safe-Query Optimizer Testing & Benchmark)
 DELIMITER //
 CREATE PROCEDURE SeedLargeData()
 BEGIN
     DECLARE i INT DEFAULT 1;
+    DECLARE tier_val VARCHAR(20);
+    DECLARE status_val VARCHAR(20);
+    DECLARE payment_val VARCHAR(50);
+    DECLARE notes_val TEXT;
     WHILE i <= 1500 DO
-        INSERT INTO customers (name, email) VALUES (CONCAT('Bulk User ', i), CONCAT('bulk_', i, '@example.com'));
-        -- We add i + 2 because IDs 1 and 2 are already taken by John and Jane
-        INSERT INTO orders (customer_id, status) VALUES (i + 2, 'delivered');
+        SET tier_val = ELT(1 + (i % 4), 'free', 'starter', 'pro', 'enterprise');
+        SET status_val = ELT(1 + (i % 5), 'pending', 'shipped', 'delivered', 'cancelled', 'refunded');
+        SET payment_val = ELT(1 + (i % 3), 'credit_card', 'paypal', 'bank_transfer');
+
+        INSERT INTO customers (name, email, phone, company, tier, notes) VALUES (
+            CONCAT('Bulk User ', i),
+            CONCAT('bulk_', i, '@example.com'),
+            IF(i % 3 = 0, NULL, CONCAT('+1-555-', LPAD(i, 4, '0'))),
+            IF(i % 5 = 0, NULL, CONCAT('Company #', i)),
+            tier_val,
+            IF(i % 4 = 0, NULL, CONCAT('Customer notes for user ', i, ' — account review pending'))
+        );
+
+        INSERT INTO orders (customer_id, status, total, currency, payment_method, shipping_notes) VALUES (
+            i + 2,
+            status_val,
+            IF(i % 10 = 0, NULL, ROUND(10 + RAND() * 990, 2)),
+            ELT(1 + (i % 3), 'USD', 'EUR', 'GBP'),
+            payment_val,
+            IF(i % 3 = 0, NULL, CONCAT('Shipping ref #', LPAD(i, 6, '0'), ' — standard delivery'))
+        );
         SET i = i + 1;
     END WHILE;
 END //
