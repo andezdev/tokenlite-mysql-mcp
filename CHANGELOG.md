@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.1.1](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.1.0...tokenlite-mysql-mcp-v3.1.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **ci:** fix smithery publishing integration ([63ce1c2](https://github.com/andezdev/tokenlite-mysql-mcp/commit/63ce1c221adfa8f3420ef5668147b54462f107c3))
+* **ci:** ignore npm scripts during devDependency pruning ([a5d7cb3](https://github.com/andezdev/tokenlite-mysql-mcp/commit/a5d7cb367ed7332ff68f6d02063008aa5a4c41b3))
+
 ## [3.1.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.0.0...tokenlite-mysql-mcp-v3.1.0) (2026-06-01)
 
 
