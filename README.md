@@ -238,7 +238,7 @@ Then configure your MCP client to connect:
 
 **Security**: the HTTP transport binds to `127.0.0.1` by default, validates the `Origin` header (configurable via `MCP_HTTP_ALLOWED_ORIGINS`), and supports optional bearer token authentication via `MCP_HTTP_TOKEN`. For production deployments exposed to the internet, the MCP spec recommends OAuth — use a reverse proxy (nginx, Caddy) to handle TLS and OAuth in front of TokenLite.
 
-**Limitations**: the current HTTP transport supports a single concurrent session. If multiple clients connect, only the last session is active. For team deployments where multiple developers need concurrent access, run one instance per developer or use a process manager (e.g., PM2) behind a load balancer to route each session to its own instance.
+**Multi-session**: the HTTP transport supports multiple concurrent sessions. Each client gets its own isolated MCP session while sharing the same database connection pool. This enables team deployments where multiple developers connect to the same instance. Monitor `MYSQL_CONNECTION_LIMIT` — it applies across all active sessions.
 
 ### 3. Connecting to Remote Databases (SSH Tunnels)
 For connecting to remote MySQL servers, we recommend native OS tunnels:

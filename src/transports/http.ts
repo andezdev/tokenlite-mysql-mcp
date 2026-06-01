@@ -4,6 +4,13 @@ import { createServer as createHttpServer, IncomingMessage, ServerResponse } fro
 import { randomUUID } from "node:crypto";
 import { log } from "../utils/logger.js";
 
+interface Session {
+    server: McpServer;
+    transport: StreamableHTTPServerTransport;
+}
+
+const sessions = new Map<string, Session>();
+
 function parseAllowedOrigins(): Set<string> {
     const raw = process.env.MCP_HTTP_ALLOWED_ORIGINS || "localhost,127.0.0.1";
     return new Set(raw.split(",").map(s => s.trim()).filter(Boolean));
@@ -14,8 +21,7 @@ function isOriginAllowed(origin: string | undefined, allowed: Set<string>): bool
 
     try {
         const url = new URL(origin);
-        const hostname = url.hostname;
-        if (allowed.has(hostname)) return true;
+        if (allowed.has(url.hostname)) return true;
         if (allowed.has(origin)) return true;
     } catch {
         // malformed origin
@@ -32,23 +38,16 @@ function readBody(req: IncomingMessage): Promise<string> {
     });
 }
 
-export async function startHttp(server: McpServer): Promise<void> {
+function isInitializeRequest(body: unknown): boolean {
+    if (!body || typeof body !== "object") return false;
+    return (body as any).method === "initialize";
+}
+
+export async function startHttp(createSessionServer: () => McpServer): Promise<void> {
     const host = process.env.MCP_HTTP_HOST || "127.0.0.1";
     const port = parseInt(process.env.MCP_HTTP_PORT || "3000", 10);
     const token = process.env.MCP_HTTP_TOKEN;
     const allowedOrigins = parseAllowedOrigins();
-
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sessionId) => {
-            log("info", `HTTP session initialized: ${sessionId}`, "http");
-        },
-        onsessionclosed: (sessionId) => {
-            log("info", `HTTP session closed: ${sessionId}`, "http");
-        },
-    });
-
-    await server.connect(transport);
 
     const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
         const url = new URL(req.url || "/", `http://${req.headers.host}`);
@@ -87,7 +86,47 @@ export async function startHttp(server: McpServer): Promise<void> {
             }
         }
 
-        await transport.handleRequest(req as any, res, parsedBody);
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+        if (sessionId && sessions.has(sessionId)) {
+            const session = sessions.get(sessionId)!;
+            await session.transport.handleRequest(req as any, res, parsedBody);
+            return;
+        }
+
+        if (!sessionId && req.method === "POST" && isInitializeRequest(parsedBody)) {
+            const transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: () => randomUUID(),
+                onsessioninitialized: (id) => {
+                    sessions.set(id, { server, transport });
+                    log("info", `HTTP session initialized: ${id} (active: ${sessions.size})`, "http");
+                },
+                onsessionclosed: (id) => {
+                    sessions.delete(id);
+                    log("info", `HTTP session closed: ${id} (active: ${sessions.size})`, "http");
+                },
+            });
+
+            transport.onclose = () => {
+                if (transport.sessionId) {
+                    sessions.delete(transport.sessionId);
+                }
+            };
+
+            const server = createSessionServer();
+            await server.connect(transport);
+            await transport.handleRequest(req as any, res, parsedBody);
+            return;
+        }
+
+        if (sessionId) {
+            res.writeHead(404, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Session not found" }));
+            return;
+        }
+
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing session ID or not an initialize request" }));
     });
 
     httpServer.listen(port, host, () => {

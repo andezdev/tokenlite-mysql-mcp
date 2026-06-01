@@ -10,7 +10,20 @@ import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
 import { initLogger } from "./utils/logger.js";
 
-export async function createServer(): Promise<McpServer> {
+let toolPrefix: string | undefined;
+
+export async function initSharedState(): Promise<void> {
+    await buildSchemaGraph();
+    initMetadata();
+
+    toolPrefix = process.env.TOOL_PREFIX;
+    if (!toolPrefix) {
+        const randomStr = Math.random().toString(36).substring(2, 6);
+        toolPrefix = `db_${randomStr}_`;
+    }
+}
+
+export function createServer(): McpServer {
     const server = new McpServer({
         name: "tokenlite-mysql-mcp",
         version: "1.0.0",
@@ -22,14 +35,7 @@ export async function createServer(): Promise<McpServer> {
 
     initLogger(server);
 
-    await buildSchemaGraph();
-    initMetadata();
-
-    let prefix = process.env.TOOL_PREFIX;
-    if (!prefix) {
-        const randomStr = Math.random().toString(36).substring(2, 6);
-        prefix = `db_${randomStr}_`;
-    }
+    const prefix = toolPrefix || "db_";
 
     registerSearchSchemaTool(server, prefix);
     registerExecuteQueryTool(server, prefix);
