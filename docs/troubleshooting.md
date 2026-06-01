@@ -1,5 +1,10 @@
 # Troubleshooting Guide
 
+## First step: use the `ping` tool
+If you suspect a connection issue, call the `ping` tool first. It returns the database connection status, MySQL server version, and pool stats (active/idle/queued connections). If `status` is `"error"`, the error message will tell you exactly what's wrong (credentials, network, MySQL down).
+
+---
+
 ## I ran `npx @andezdev/tokenlite-mysql-mcp` but no URL appears
 **Symptom:** You run the script directly and the terminal hangs silently without outputting a web address.
 **Cause:** MCP servers communicate strictly via **STDIO** (Standard Input/Output) by exchanging JSON-RPC payloads. They do not start a web server natively.

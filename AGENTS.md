@@ -49,3 +49,9 @@
 **Use for:** Forcing the server to rescan the database and update its internal graph.
 **Arguments:** None.
 **Use when:** You receive an error that a table or column doesn't exist, implying the schema changed.
+
+### `ping`
+**Use for:** Checking if the database connection is alive and healthy.
+**Arguments:** None.
+**Returns:** JSON with `status` (`"ok"` or `"error"`), `server_version`, and `pool` stats (`active`, `idle`, `queue` connection counts).
+**Use when:** You suspect a connection issue or want to verify the server is operational before running queries.
