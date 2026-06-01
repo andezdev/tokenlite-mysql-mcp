@@ -5,6 +5,28 @@ import { injectLimitAst, analyzeQueryPlan } from './optimizer.js';
 // Supress dotenv logs so they don't corrupt the MCP JSON-RPC stdout stream
 (dotenv.config as any)({ quiet: true });
 
+const MAX_RETRY_ATTEMPTS = parseInt(process.env.MYSQL_RETRY_ATTEMPTS || '3', 10);
+const RETRY_BASE_DELAY_MS = parseInt(process.env.MYSQL_RETRY_DELAY_MS || '1000', 10);
+const QUEUE_LIMIT = parseInt(process.env.MYSQL_QUEUE_LIMIT || '50', 10);
+
+const RETRYABLE_ERRORS = new Set([
+    'ECONNREFUSED',
+    'PROTOCOL_CONNECTION_LOST',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'ER_CON_COUNT_ERROR',
+]);
+
+export function isRetryableError(error: any): boolean {
+    if (RETRYABLE_ERRORS.has(error.code)) return true;
+    if (error.message?.includes('Connection lost')) return true;
+    return false;
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -13,8 +35,12 @@ export const pool = mysql.createPool({
     database: process.env.DB_NAME || 'test',
     waitForConnections: true,
     connectionLimit: parseInt(process.env.MYSQL_CONNECTION_LIMIT || '10', 10),
-    queueLimit: 0,
+    queueLimit: QUEUE_LIMIT,
     connectTimeout: parseInt(process.env.MYSQL_CONNECT_TIMEOUT || '10000', 10)
+});
+
+pool.pool.on('enqueue', () => {
+    console.error(`[tokenlite-mysql-mcp] Warning: All connections busy, request queued (limit: ${QUEUE_LIMIT}).`);
 });
 
 // Session-Level Defense in Depth
@@ -75,17 +101,42 @@ export async function executeSafeQuery(sql: string): Promise<any[]> {
         await analyzeQueryPlan(astOptimizedSql, pool);
     }
 
-    const [rows] = await pool.query({
+    const rows = await queryWithRetry({
         sql: astOptimizedSql,
         timeout: parseInt(process.env.MYSQL_QUERY_TIMEOUT || '15000', 10)
     });
-    
+
     return rows as any[];
+}
+
+async function queryWithRetry(opts: { sql: string; timeout?: number }): Promise<any> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+        try {
+            const [rows] = await pool.query(opts);
+            return rows;
+        } catch (error: any) {
+            lastError = error;
+
+            if (!isRetryableError(error)) {
+                throw error;
+            }
+
+            if (attempt < MAX_RETRY_ATTEMPTS) {
+                const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+                console.error(`[tokenlite-mysql-mcp] Connection error (${error.code}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS})...`);
+                await sleep(delay);
+            }
+        }
+    }
+
+    throw lastError;
 }
 
 export async function pingDb(): Promise<boolean> {
     try {
-        await pool.query('SELECT 1');
+        await queryWithRetry({ sql: 'SELECT 1' });
         return true;
     } catch (e) {
         return false;

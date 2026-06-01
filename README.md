@@ -104,6 +104,9 @@ To use within Cursor IDE:
 | `MYSQL_QUERY_TIMEOUT` | Max execution time for a query (in ms). Aborts heavy queries to protect against DoS. | `15000` | No |
 | `MYSQL_CONNECTION_LIMIT` | Max concurrent pool connections. | `10` | No |
 | `MYSQL_CONNECT_TIMEOUT` | Max time to wait for a socket to establish (in ms). | `10000` | No |
+| `MYSQL_RETRY_ATTEMPTS` | Max retries on transient connection errors (`ECONNREFUSED`, `PROTOCOL_CONNECTION_LOST`, etc.). | `3` | No |
+| `MYSQL_RETRY_DELAY_MS` | Base delay (ms) for exponential backoff between retries (1s, 2s, 4s...). | `1000` | No |
+| `MYSQL_QUEUE_LIMIT` | Max queued requests when all pool connections are busy. Prevents unbounded growth if MySQL is down. | `50` | No |
 | `ALLOW_INSERT_OPERATION` | Enable `INSERT` and `REPLACE` queries. | `false` | No |
 | `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
 | `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |

@@ -16,6 +16,23 @@ npx @modelcontextprotocol/inspector npx -y @andezdev/tokenlite-mysql-mcp
 docker-compose -f docker/docker-compose.yml up -d
 ```
 
+## Connection lost / PROTOCOL_CONNECTION_LOST
+**Symptom:** Queries fail intermittently with `PROTOCOL_CONNECTION_LOST` or `ECONNRESET` errors, especially after idle periods.
+**Cause:** MySQL closed the connection (e.g. `wait_timeout` exceeded, server restart, network interruption).
+**Solution:** TokenLite automatically retries transient connection errors with exponential backoff (default: 3 attempts, 1s/2s/4s delays). If errors persist:
+- Verify MySQL is running and reachable.
+- Increase `MYSQL_RETRY_ATTEMPTS` for unreliable networks.
+- Increase `MYSQL_RETRY_DELAY_MS` if the database takes longer to recover.
+- Check MySQL's `wait_timeout` and `interactive_timeout` settings.
+
+## Queue limit reached
+**Symptom:** Requests fail immediately with a `Too many connections` or queue error instead of waiting.
+**Cause:** All pool connections are busy and the queue has reached its limit (`MYSQL_QUEUE_LIMIT`, default 50).
+**Solution:** This is a safety mechanism to prevent unbounded memory growth when MySQL is unresponsive. Either:
+- Increase `MYSQL_QUEUE_LIMIT` if you expect high concurrency.
+- Increase `MYSQL_CONNECTION_LIMIT` to allow more parallel connections.
+- Investigate why MySQL is slow (long-running queries, locks, resource exhaustion).
+
 ## OptimizerError: Full table scan detected
 **Symptom:** `execute_safe_query` throws an error about Full Table Scans.
 **Cause:** The query executed by the LLM tried to read too many rows without an index.
