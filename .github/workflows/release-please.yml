@@ -16,8 +16,6 @@ jobs:
     steps:
       - id: release
         uses: googleapis/release-please-action@v4
-        with:
-          release-type: node
 
       # --- NPM PUBLISH STEPS ---
       # only run if a release was actually created by merging the PR
@@ -45,7 +43,7 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         run: |
           echo "Waiting for MySQL to start..."
-          while ! mysqladmin ping -h 127.0.0.1 -u root --silent; do
+          while ! mysqladmin ping -h 127.0.0.1 -P 3307 -u root -proot --silent; do
             sleep 1
           done
 
@@ -60,3 +58,16 @@ jobs:
       - name: Publish to NPM
         if: ${{ steps.release.outputs.release_created }}
         run: npm publish --provenance --access public
+
+      - name: Install mcp-publisher
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry
+        if: ${{ steps.release.outputs.release_created }}
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        if: ${{ steps.release.outputs.release_created }}
+        run: ./mcp-publisher publish
