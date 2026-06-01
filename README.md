@@ -107,6 +107,7 @@ To use within Cursor IDE:
 | `MYSQL_RETRY_ATTEMPTS` | Max retries on transient connection errors (`ECONNREFUSED`, `PROTOCOL_CONNECTION_LOST`, etc.). | `3` | No |
 | `MYSQL_RETRY_DELAY_MS` | Base delay (ms) for exponential backoff between retries (1s, 2s, 4s...). | `1000` | No |
 | `MYSQL_QUEUE_LIMIT` | Max queued requests when all pool connections are busy. Prevents unbounded growth if MySQL is down. | `50` | No |
+| `MCP_DDL_CACHE_TTL` | Time-to-live (in seconds) for cached DDL statements. Reduces latency on repeated `search_schema` calls. Invalidated by `refresh_schema`. | `60` | No |
 | `ALLOW_INSERT_OPERATION` | Enable `INSERT` and `REPLACE` queries. | `false` | No |
 | `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
 | `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |

@@ -3,16 +3,33 @@ import { TableNode, ForeignKey } from './types.js';
 
 export let schemaGraph = new Map<string, TableNode>();
 
-/**
- * Retrieves the raw DDL (CREATE TABLE) statement for a given table.
- */
+const DDL_CACHE_TTL_MS = parseInt(process.env.MCP_DDL_CACHE_TTL || '60', 10) * 1000;
+
+interface DdlCacheEntry {
+    ddl: string | null;
+    expiresAt: number;
+}
+
+const ddlCache = new Map<string, DdlCacheEntry>();
+
+export function invalidateDdlCache(): void {
+    ddlCache.clear();
+}
+
 export async function getTableDDL(tableName: string): Promise<string | null> {
+    const cached = ddlCache.get(tableName);
+    if (cached && Date.now() < cached.expiresAt) {
+        return cached.ddl;
+    }
+
     try {
         const [rows] = await pool.query<any[]>(`SHOW CREATE TABLE \`${tableName}\``);
-        if (rows && rows.length > 0) {
-            return rows[0]['Create Table'] || rows[0]['Create View'];
-        }
-        return null;
+        const ddl = (rows && rows.length > 0)
+            ? (rows[0]['Create Table'] || rows[0]['Create View'])
+            : null;
+
+        ddlCache.set(tableName, { ddl, expiresAt: Date.now() + DDL_CACHE_TTL_MS });
+        return ddl;
     } catch (e) {
         return null;
     }
@@ -115,6 +132,7 @@ export async function buildSchemaGraph(): Promise<void> {
         }
     }
 
+    invalidateDdlCache();
     schemaGraph = newGraph;
     console.error(`[tokenlite-mysql-mcp] Schema Graph built successfully. Indexed ${schemaGraph.size} tables.`);
 }
