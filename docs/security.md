@@ -26,6 +26,12 @@ TokenLite MCP is designed with a **Defense in Depth** strategy to guarantee abso
 3. **Layer 3: Environment Isolation**
    In a production setup, the database credentials (`DB_PASSWORD`) should be loaded in the environment of the MCP process internally, without explicitly printing them in the prompt. If the LLM never sees the password, it cannot build the raw terminal command to attempt a bypass.
 
+4. **Layer 4: Input Validation**
+   All tool inputs are validated with strict bounds:
+   - `execute_safe_query`: SQL limited to **10,000 characters** max.
+   - `search_schema`: search query limited to **200 characters** max.
+   - Table names are sanitized against `^[a-zA-Z0-9_]+$` before use in any dynamic SQL (`SHOW CREATE TABLE`). Names with spaces, backticks, semicolons, dots, dashes, or unicode are rejected.
+
 ### Recommendation
 If you notice the LLM trying to bypass the MCP, you can add a system prompt instruction to your agent's configuration:
 > *"You are strictly a read-only agent for this database. Do not attempt to bypass the MCP using terminal commands, as the database engine will block any write operations."*

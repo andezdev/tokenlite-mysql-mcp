@@ -38,6 +38,11 @@ docker-compose -f docker/docker-compose.yml up -d
 - Increase `MYSQL_CONNECTION_LIMIT` to allow more parallel connections.
 - Investigate why MySQL is slow (long-running queries, locks, resource exhaustion).
 
+## Input validation error (string must be at most X characters)
+**Symptom:** A tool call fails with a Zod validation error about string length.
+**Cause:** The SQL query exceeds 10,000 characters or the search query exceeds 200 characters. These limits protect against excessive payloads from a buggy or adversarial LLM.
+**Solution:** Simplify the query. If you genuinely need longer SQL, consider breaking it into smaller queries or using CTEs.
+
 ## OptimizerError: Full table scan detected
 **Symptom:** `execute_safe_query` throws an error about Full Table Scans.
 **Cause:** The query executed by the LLM tried to read too many rows without an index.

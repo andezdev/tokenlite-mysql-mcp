@@ -17,7 +17,13 @@ export function invalidateDdlCache(): void {
     ddlCache.clear();
 }
 
+const SAFE_TABLE_NAME = /^[a-zA-Z0-9_]+$/;
+
 export async function getTableDDL(tableName: string): Promise<string | null> {
+    if (!SAFE_TABLE_NAME.test(tableName)) {
+        return null;
+    }
+
     const cached = ddlCache.get(tableName);
     if (cached && Date.now() < cached.expiresAt) {
         return cached.ddl;

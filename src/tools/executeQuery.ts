@@ -54,7 +54,7 @@ export function registerExecuteQueryTool(server: McpServer, prefix: string = "")
         `${prefix}execute_safe_query`,
         "Executes a safe SELECT query on the database. Large results are automatically truncated. CRITICAL: NEVER use this tool (e.g., SHOW TABLES or querying information_schema) to understand the database structure. You MUST ALWAYS use the 'search_schema' tool first to understand the relationships and tables before writing any JOIN queries.",
         {
-            sql: z.string().describe("SQL SELECT statement to execute."),
+            sql: z.string().max(10000).describe("SQL SELECT statement to execute."),
         },
         { readOnlyHint: isReadOnly },
         handleExecuteQuery
