@@ -71,6 +71,24 @@ jobs:
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm publish --provenance --access public
 
+      - name: Install mcpb and Smithery CLI
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
+        run: npm install -g @anthropic-ai/mcpb @smithery/cli
+
+      - name: Prune devDependencies for Bundle
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
+        run: npm install --omit=dev
+
+      - name: Pack MCPB Bundle
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
+        run: mcpb pack .
+
+      - name: Publish Bundle to Smithery
+        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
+        run: smithery mcp publish ./tokenlite-mysql-mcp.mcpb -n andezdev/tokenlite-mysql-mcp
+        env:
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+
       - name: Install mcp-publisher
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: |

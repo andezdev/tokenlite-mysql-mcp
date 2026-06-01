@@ -1,0 +1,161 @@
+# Smithery.ai configuration for TokenLite MySQL MCP
+startCommand:
+  type: "stdio"
+
+configSchema:
+  type: "object"
+  required: ["DB_NAME"]
+  properties:
+    DB_HOST:
+      type: "string"
+      title: "Database Host"
+      default: "localhost"
+      description: "MySQL Host address"
+    DB_PORT:
+      type: "integer"
+      title: "Database Port"
+      default: 3306
+      description: "MySQL Port"
+    DB_USER:
+      type: "string"
+      title: "Database User"
+      default: "root"
+      description: "MySQL Username"
+    DB_PASSWORD:
+      type: "string"
+      title: "Database Password"
+      default: ""
+      description: "MySQL Password"
+    DB_NAME:
+      type: "string"
+      title: "Database Name"
+      description: "MySQL Database name"
+    MCP_SAFE_QUERY_MAX_ROWS:
+      type: "integer"
+      title: "Max Rows"
+      default: 1000
+      description: "Threshold for EXPLAIN to block unindexed Full Table Scans."
+    MCP_SAFE_QUERY_ENABLE_BLOCKING:
+      type: "boolean"
+      title: "Enable Blocking"
+      default: true
+      description: "Enable or disable the EXPLAIN guardrail."
+    MCP_METADATA_PATH:
+      type: "string"
+      title: "Metadata Path"
+      description: "Absolute path to your custom metadata.json dictionary."
+    MCP_TEMPLATES_PATH:
+      type: "string"
+      title: "Templates Path"
+      description: "Absolute path to your custom templates.json queries."
+    TOOL_PREFIX:
+      type: "string"
+      title: "Tool Prefix"
+      description: "Prefix for tool names (e.g. db_a1b2_). Random if not provided."
+    MYSQL_QUERY_TIMEOUT:
+      type: "integer"
+      title: "Query Timeout"
+      default: 15000
+      description: "Max execution time for a query (in ms)."
+    MYSQL_CONNECTION_LIMIT:
+      type: "integer"
+      title: "Connection Limit"
+      default: 10
+      description: "Max concurrent pool connections."
+    MYSQL_CONNECT_TIMEOUT:
+      type: "integer"
+      title: "Connect Timeout"
+      default: 10000
+      description: "Max time to wait for a socket to establish (in ms)."
+    MYSQL_RETRY_ATTEMPTS:
+      type: "integer"
+      title: "Retry Attempts"
+      default: 3
+      description: "Max retries on transient connection errors."
+    MYSQL_RETRY_DELAY_MS:
+      type: "integer"
+      title: "Retry Delay (ms)"
+      default: 1000
+      description: "Base delay (ms) for exponential backoff between retries."
+    MYSQL_QUEUE_LIMIT:
+      type: "integer"
+      title: "Queue Limit"
+      default: 50
+      description: "Max queued requests when all pool connections are busy."
+    MCP_DDL_CACHE_TTL:
+      type: "integer"
+      title: "DDL Cache TTL"
+      default: 60
+      description: "Time-to-live (in seconds) for cached DDL statements."
+    MCP_LOG_LEVEL:
+      type: "string"
+      title: "Log Level"
+      default: "info"
+      enum: ["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"]
+      description: "Minimum severity for MCP log notifications."
+    ALLOW_INSERT_OPERATION:
+      type: "boolean"
+      title: "Allow Insert"
+      default: false
+      description: "Enable INSERT and REPLACE queries."
+    ALLOW_UPDATE_OPERATION:
+      type: "boolean"
+      title: "Allow Update"
+      default: false
+      description: "Enable UPDATE queries."
+    ALLOW_DELETE_OPERATION:
+      type: "boolean"
+      title: "Allow Delete"
+      default: false
+      description: "Enable DELETE and TRUNCATE queries."
+    ALLOW_DDL_OPERATION:
+      type: "boolean"
+      title: "Allow DDL"
+      default: false
+      description: "Enable Data Definition Language (CREATE, ALTER, DROP, RENAME)."
+
+commandFunction: |-
+  (config) => {
+    const env = {};
+    if (config.DB_HOST !== undefined) env.DB_HOST = config.DB_HOST;
+    if (config.DB_PORT !== undefined) env.DB_PORT = config.DB_PORT.toString();
+    if (config.DB_USER !== undefined) env.DB_USER = config.DB_USER;
+    if (config.DB_PASSWORD !== undefined) env.DB_PASSWORD = config.DB_PASSWORD;
+    if (config.DB_NAME !== undefined) env.DB_NAME = config.DB_NAME;
+    if (config.MCP_SAFE_QUERY_MAX_ROWS !== undefined) env.MCP_SAFE_QUERY_MAX_ROWS = config.MCP_SAFE_QUERY_MAX_ROWS.toString();
+    if (config.MCP_SAFE_QUERY_ENABLE_BLOCKING !== undefined) env.MCP_SAFE_QUERY_ENABLE_BLOCKING = config.MCP_SAFE_QUERY_ENABLE_BLOCKING.toString();
+    if (config.MCP_METADATA_PATH !== undefined) env.MCP_METADATA_PATH = config.MCP_METADATA_PATH;
+    if (config.MCP_TEMPLATES_PATH !== undefined) env.MCP_TEMPLATES_PATH = config.MCP_TEMPLATES_PATH;
+    if (config.TOOL_PREFIX !== undefined) env.TOOL_PREFIX = config.TOOL_PREFIX;
+    if (config.MYSQL_QUERY_TIMEOUT !== undefined) env.MYSQL_QUERY_TIMEOUT = config.MYSQL_QUERY_TIMEOUT.toString();
+    if (config.MYSQL_CONNECTION_LIMIT !== undefined) env.MYSQL_CONNECTION_LIMIT = config.MYSQL_CONNECTION_LIMIT.toString();
+    if (config.MYSQL_CONNECT_TIMEOUT !== undefined) env.MYSQL_CONNECT_TIMEOUT = config.MYSQL_CONNECT_TIMEOUT.toString();
+    if (config.MYSQL_RETRY_ATTEMPTS !== undefined) env.MYSQL_RETRY_ATTEMPTS = config.MYSQL_RETRY_ATTEMPTS.toString();
+    if (config.MYSQL_RETRY_DELAY_MS !== undefined) env.MYSQL_RETRY_DELAY_MS = config.MYSQL_RETRY_DELAY_MS.toString();
+    if (config.MYSQL_QUEUE_LIMIT !== undefined) env.MYSQL_QUEUE_LIMIT = config.MYSQL_QUEUE_LIMIT.toString();
+    if (config.MCP_DDL_CACHE_TTL !== undefined) env.MCP_DDL_CACHE_TTL = config.MCP_DDL_CACHE_TTL.toString();
+    if (config.MCP_LOG_LEVEL !== undefined) env.MCP_LOG_LEVEL = config.MCP_LOG_LEVEL;
+    if (config.ALLOW_INSERT_OPERATION !== undefined) env.ALLOW_INSERT_OPERATION = config.ALLOW_INSERT_OPERATION.toString();
+    if (config.ALLOW_UPDATE_OPERATION !== undefined) env.ALLOW_UPDATE_OPERATION = config.ALLOW_UPDATE_OPERATION.toString();
+    if (config.ALLOW_DELETE_OPERATION !== undefined) env.ALLOW_DELETE_OPERATION = config.ALLOW_DELETE_OPERATION.toString();
+    if (config.ALLOW_DDL_OPERATION !== undefined) env.ALLOW_DDL_OPERATION = config.ALLOW_DDL_OPERATION.toString();
+
+    return {
+      command: "npx",
+      args: ["-y", "@andezdev/tokenlite-mysql-mcp"],
+      env
+    };
+  }
+
+exampleConfig:
+  DB_HOST: "localhost"
+  DB_PORT: 3306
+  DB_USER: "root"
+  DB_PASSWORD: "password"
+  DB_NAME: "test_db"
+  MCP_SAFE_QUERY_MAX_ROWS: 1000
+  MCP_SAFE_QUERY_ENABLE_BLOCKING: true
+  ALLOW_INSERT_OPERATION: false
+  ALLOW_UPDATE_OPERATION: false
+  ALLOW_DELETE_OPERATION: false
+  ALLOW_DDL_OPERATION: false

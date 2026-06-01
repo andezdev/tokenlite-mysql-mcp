@@ -29,7 +29,11 @@ async function main() {
     initLogger(server);
 
     // Build Semantic Graph on startup
-    await buildSchemaGraph();
+    try {
+        await buildSchemaGraph();
+    } catch (e) {
+        log("warning", `Failed to build schema graph on startup: ${e instanceof Error ? e.message : String(e)}. The server will start in degraded mode.`);
+    }
     
     // Load Metadata and Templates
     initMetadata();

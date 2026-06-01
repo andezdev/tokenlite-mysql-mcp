@@ -1,0 +1,152 @@
+{
+  "manifest_version": "0.3",
+  "name": "tokenlite-mysql-mcp",
+  "display_name": "TokenLite MySQL MCP",
+  "icon": "",
+  "version": "3.0.0",
+  "description": "A secure, efficient, and intelligent MySQL database server for the Model Context Protocol",
+  "long_description": "A highly optimized MySQL MCP server designed specifically for AI agents and coding assistants. It resolves typical context bloat and performance issues through a unique Graph-Based Semantic Schema (localizing schema discovery to Target + 1-hop relationships), strict Safe-Query Optimizer (preventing heavy unindexed table scans via AST parsing and EXPLAIN limits), Granular AST-Based Write Firewall (default read-only with surgical opt-in permissions), Session-Level Defense in Depth, and dense CSV token compression.",
+  "author": {
+    "name": "Antonio Hernandez",
+    "url": "https://github.com/andezdev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andezdev/tokenlite-mysql-mcp.git"
+  },
+  "homepage": "https://github.com/andezdev/tokenlite-mysql-mcp#readme",
+  "support": "https://github.com/andezdev/tokenlite-mysql-mcp/issues",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "mysql",
+    "model-context-protocol",
+    "claude",
+    "ai",
+    "llm",
+    "database",
+    "sql"
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "DB_HOST": "${user_config.db_host}",
+        "DB_PORT": "${user_config.db_port}",
+        "DB_USER": "${user_config.db_user}",
+        "DB_PASSWORD": "${user_config.db_password}",
+        "DB_NAME": "${user_config.db_name}",
+        "MCP_SAFE_QUERY_MAX_ROWS": "${user_config.mcp_safe_query_max_rows}",
+        "MCP_SAFE_QUERY_ENABLE_BLOCKING": "${user_config.mcp_safe_query_enable_blocking}",
+        "MCP_METADATA_PATH": "${user_config.mcp_metadata_path}",
+        "MCP_TEMPLATES_PATH": "${user_config.mcp_templates_path}",
+        "ALLOW_INSERT_OPERATION": "${user_config.allow_insert_operation}",
+        "ALLOW_UPDATE_OPERATION": "${user_config.allow_update_operation}",
+        "ALLOW_DELETE_OPERATION": "${user_config.allow_delete_operation}",
+        "ALLOW_DDL_OPERATION": "${user_config.allow_ddl_operation}"
+      }
+    }
+  },
+  "user_config": {
+    "db_host": {
+      "type": "string",
+      "title": "Database Host",
+      "description": "MySQL Host address",
+      "default": "localhost",
+      "required": false
+    },
+    "db_port": {
+      "type": "number",
+      "title": "Database Port",
+      "description": "MySQL Port number",
+      "default": 3306,
+      "required": false
+    },
+    "db_user": {
+      "type": "string",
+      "title": "Database User",
+      "description": "MySQL Username",
+      "default": "root",
+      "required": false
+    },
+    "db_password": {
+      "type": "string",
+      "title": "Database Password",
+      "description": "MySQL Password",
+      "default": "",
+      "sensitive": true,
+      "required": false
+    },
+    "db_name": {
+      "type": "string",
+      "title": "Database Name",
+      "description": "MySQL Database name",
+      "required": true
+    },
+    "mcp_safe_query_max_rows": {
+      "type": "number",
+      "title": "Max Scan Rows",
+      "description": "Threshold for EXPLAIN to block unindexed Full Table Scans.",
+      "default": 1000,
+      "required": false
+    },
+    "mcp_safe_query_enable_blocking": {
+      "type": "boolean",
+      "title": "Enable Blocking Guardrail",
+      "description": "Enable or disable the EXPLAIN guardrail.",
+      "default": true,
+      "required": false
+    },
+    "mcp_metadata_path": {
+      "type": "string",
+      "title": "Metadata Path",
+      "description": "Absolute path to your custom metadata.json dictionary.",
+      "required": false
+    },
+    "mcp_templates_path": {
+      "type": "string",
+      "title": "Templates Path",
+      "description": "Absolute path to your custom templates.json queries.",
+      "required": false
+    },
+    "allow_insert_operation": {
+      "type": "boolean",
+      "title": "Allow INSERT Queries",
+      "description": "Enable INSERT and REPLACE queries (default read-only is false).",
+      "default": false,
+      "required": false
+    },
+    "allow_update_operation": {
+      "type": "boolean",
+      "title": "Allow UPDATE Queries",
+      "description": "Enable UPDATE queries (default read-only is false).",
+      "default": false,
+      "required": false
+    },
+    "allow_delete_operation": {
+      "type": "boolean",
+      "title": "Allow DELETE Queries",
+      "description": "Enable DELETE and TRUNCATE queries (default read-only is false).",
+      "default": false,
+      "required": false
+    },
+    "allow_ddl_operation": {
+      "type": "boolean",
+      "title": "Allow DDL Queries",
+      "description": "Enable Data Definition Language like CREATE, ALTER, DROP, RENAME (default is false).",
+      "default": false,
+      "required": false
+    }
+  }
+}
