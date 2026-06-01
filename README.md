@@ -1,6 +1,6 @@
 # TokenLite MySQL MCP
 
-[![npm version](https://badge.fury.io/js/@andezdev%2Ftokenlite-mysql-mcp.svg)](https://badge.fury.io/js/@andezdev%2Ftokenlite-mysql-mcp)
+[![npm version](https://badge.fury.io/js/@andezdev%2Ftokenlite-mysql-mcp.svg?icon=si%3Anpm)](https://badge.fury.io/js/@andezdev%2Ftokenlite-mysql-mcp)
 
 A robust and secure MySQL database server implemented under Anthropic's **Model Context Protocol (MCP)**. 
 Designed specifically to solve the shortcomings of current generic MCP servers through **Graceful Degradation, Active Performance Protection, and Aggressive Token Optimization**.
