@@ -26,10 +26,15 @@ This project enforces strict quality and semantic standards to ensure maximum sa
    ```bash
    docker-compose -f docker/docker-compose.yml up -d
    ```
-2. Run Vitest:
+2. Run tests:
    ```bash
    npm test
    ```
+3. Run tests with coverage report:
+   ```bash
+   npm run test:coverage
+   ```
+   This generates a coverage report and enforces minimum thresholds (currently 70% lines). CI will fail if coverage drops below the threshold. Focus coverage efforts on `src/db/` and `src/tools/` — these contain security-critical code paths.
 
 ## 📝 Commit Message Standard (MANDATORY)
 
