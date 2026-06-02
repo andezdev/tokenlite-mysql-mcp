@@ -88,6 +88,47 @@ describe('Security - Permission Boundary Tests', () => {
     });
 });
 
+describe('Security - Advanced Injection Vectors', () => {
+    it('should reject MySQL conditional comments as syntax error (safe behavior)', () => {
+        expect(() => injectLimitAst('SELECT /*!50000 1,2,3 */ FROM users')).toThrow(OptimizerError);
+    });
+
+    it('should reject nested comments as syntax error (safe behavior)', () => {
+        expect(() => injectLimitAst('SELECT * FROM users /* outer /* inner */ still comment */')).toThrow(OptimizerError);
+    });
+
+    it('should block stacked queries disguised with whitespace variations', () => {
+        expect(() => injectLimitAst('SELECT 1;\t\nDROP TABLE users')).toThrow(OptimizerError);
+    });
+
+    it('should handle hex-encoded string values safely', () => {
+        const result = injectLimitAst("SELECT * FROM users WHERE name = 0x41646D696E");
+        expect(result.astType).toBe('select');
+        expect(result.sql.toUpperCase()).toContain('LIMIT');
+    });
+
+    it('should handle queries with escaped quotes', () => {
+        const result = injectLimitAst("SELECT * FROM users WHERE name = 'O\\'Brien'");
+        expect(result.astType).toBe('select');
+    });
+
+    it('should block UNION-based injection with subquery', () => {
+        const result = injectLimitAst('SELECT id FROM users UNION ALL SELECT password FROM admins');
+        expect(result.astType).toBe('select');
+        expect(result.sql.toUpperCase()).toContain('LIMIT');
+    });
+
+    it('should handle backtick-escaped identifiers', () => {
+        const result = injectLimitAst('SELECT `id`, `name` FROM `users` WHERE `id` = 1');
+        expect(result.astType).toBe('select');
+        expect(result.sql.toUpperCase()).toContain('LIMIT');
+    });
+
+    it('should reject SQL with null bytes', () => {
+        expect(() => injectLimitAst('SELECT * FROM users\0 WHERE 1=1')).toThrow(OptimizerError);
+    });
+});
+
 describe('Security - Malformed SQL Handling', () => {
     it('should throw OptimizerError for incomplete SELECT', () => {
         expect(() => injectLimitAst('SELECT FROM')).toThrow(OptimizerError);

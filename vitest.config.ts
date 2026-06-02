@@ -12,6 +12,9 @@ export default defineConfig({
       exclude: ['src/index.ts'],
       thresholds: {
         lines: 70,
+        'src/db/**': {
+          lines: 80,
+        },
       },
     },
   },

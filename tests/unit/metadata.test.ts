@@ -65,3 +65,48 @@ describe('Metadata & Templates Engine', () => {
         expect(all.length).toBe(2);
     });
 });
+
+describe('Metadata - Malicious Input Handling', () => {
+    const maliciousMetadataPath = path.resolve(__dirname, 'test_malicious_metadata.json');
+
+    afterAll(() => {
+        if (fs.existsSync(maliciousMetadataPath)) fs.unlinkSync(maliciousMetadataPath);
+    });
+
+    it('should store XSS payloads as inert strings (not executed)', () => {
+        fs.writeFileSync(maliciousMetadataPath, JSON.stringify({
+            "users.status": {
+                "1": "<script>alert('xss')</script>",
+                "2": "<img onerror=alert(1) src=x>",
+            }
+        }));
+        process.env.MCP_METADATA_PATH = maliciousMetadataPath;
+        initMetadata();
+
+        const semantics = getTableSemantics('users');
+        expect(semantics['users.status']['1']).toBe("<script>alert('xss')</script>");
+        expect(typeof semantics['users.status']['1']).toBe('string');
+    });
+
+    it('should store SQL injection payloads as inert strings', () => {
+        fs.writeFileSync(maliciousMetadataPath, JSON.stringify({
+            "users.name": "'; DROP TABLE users; --"
+        }));
+        process.env.MCP_METADATA_PATH = maliciousMetadataPath;
+        initMetadata();
+
+        const semantics = getTableSemantics('users');
+        expect(semantics['users.name']).toBe("'; DROP TABLE users; --");
+    });
+
+    it('should handle non-existent metadata path gracefully', () => {
+        process.env.MCP_METADATA_PATH = '/nonexistent/../../etc/passwd';
+        expect(() => initMetadata()).not.toThrow();
+    });
+
+    it('should handle invalid JSON gracefully', () => {
+        fs.writeFileSync(maliciousMetadataPath, 'not valid json {{{');
+        process.env.MCP_METADATA_PATH = maliciousMetadataPath;
+        expect(() => initMetadata()).not.toThrow();
+    });
+});
