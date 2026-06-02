@@ -21,7 +21,7 @@ describe('MCP Tools Integration & Risk Mitigations', () => {
         
         expect(content).toContain('CREATE TABLE `orders`');
         expect(content).toContain('CREATE TABLE `customers`');
-        expect(content).toContain('INFERRED PARENT: `orders`.`customer_id` -> `customers`.`id`');
+        expect(content).toMatch(/INFERRED PARENT \(confidence: \d+\): `orders`\.`customer_id` -> `customers`\.`id`/);
     });
 
     it('[Risk B] execute_safe_query should intercept ER_BAD_FIELD_ERROR and suggest refresh_schema', async () => {

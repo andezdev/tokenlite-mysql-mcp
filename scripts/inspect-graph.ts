@@ -66,8 +66,9 @@ async function runInspection() {
 
                     if (fk.isHeuristic) {
                         totalHeuristic++;
+                        const confStr = fk.confidence != null ? ` \x1b[2m(confidence: ${fk.confidence})\x1b[0m` : '';
                         console.log(
-                            `     • \x1b[33m[HEURISTIC]\x1b[0m \x1b[32m${fk.columnName}\x1b[0m ➔ \x1b[1m${fk.referencedTable}\x1b[0m.\x1b[2m${fk.referencedColumn}\x1b[0m ${statusStr}`
+                            `     • \x1b[33m[HEURISTIC]\x1b[0m \x1b[32m${fk.columnName}\x1b[0m ➔ \x1b[1m${fk.referencedTable}\x1b[0m.\x1b[2m${fk.referencedColumn}\x1b[0m${confStr} ${statusStr}`
                         );
                     } else {
                         totalExplicit++;

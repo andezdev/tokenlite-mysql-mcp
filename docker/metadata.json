@@ -5,5 +5,7 @@
     "delivered": "The customer has received the package."
   },
   "customers.created_at": "UTC timestamp of when the user first registered on our platform.",
-  "order_items.quantity": "Number of units purchased for this specific product in the given order."
+  "order_items.quantity": "Number of units purchased for this specific product in the given order.",
+  "_relationships": {
+  }
 }

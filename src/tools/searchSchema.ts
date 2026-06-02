@@ -43,7 +43,8 @@ export async function handleSearchSchema({ query }: { query: string }) {
     for (const fk of targetTable.foreignKeys) {
         parentTableNames.add(fk.referencedTable);
         if (fk.isHeuristic) {
-            inferredHints.push(`/* INFERRED PARENT: \`${targetTable.name}\`.\`${fk.columnName}\` -> \`${fk.referencedTable}\`.\`${fk.referencedColumn}\` */`);
+            const conf = fk.confidence != null ? ` (confidence: ${fk.confidence})` : '';
+            inferredHints.push(`/* INFERRED PARENT${conf}: \`${targetTable.name}\`.\`${fk.columnName}\` -> \`${fk.referencedTable}\`.\`${fk.referencedColumn}\` */`);
         }
     }
 
@@ -54,7 +55,8 @@ export async function handleSearchSchema({ query }: { query: string }) {
             if (fk.referencedTable === targetTable.name) {
                 childTableNames.add(node.name);
                 if (fk.isHeuristic) {
-                    inferredHints.push(`/* INFERRED CHILD: \`${node.name}\`.\`${fk.columnName}\` -> \`${targetTable.name}\`.\`${fk.referencedColumn}\` */`);
+                    const conf = fk.confidence != null ? ` (confidence: ${fk.confidence})` : '';
+                    inferredHints.push(`/* INFERRED CHILD${conf}: \`${node.name}\`.\`${fk.columnName}\` -> \`${targetTable.name}\`.\`${fk.referencedColumn}\` */`);
                 }
             }
         }

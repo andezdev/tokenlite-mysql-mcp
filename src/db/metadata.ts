@@ -62,6 +62,19 @@ export function getTableSemantics(tableName: string): Record<string, any> {
     return semantics;
 }
 
+export function getCustomRelationships(): Map<string, string> {
+    const relationships = new Map<string, string>();
+    const raw = metadataCache['_relationships'];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return relationships;
+
+    for (const [source, target] of Object.entries(raw)) {
+        if (typeof target !== 'string') continue;
+        if (!source.includes('.') || !target.includes('.')) continue;
+        relationships.set(source, target);
+    }
+    return relationships;
+}
+
 /**
  * Performs a fuzzy search on the loaded templates.
  */

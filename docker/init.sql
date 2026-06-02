@@ -39,11 +39,13 @@ CREATE TABLE shipping_addresses (
     CONSTRAINT fk_customer_address FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
--- 3. Categories (Standalone root)
+-- 3. Categories (Self-referencing: parent_id → categories.id)
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_id INT DEFAULT NULL,
     name VARCHAR(100) NOT NULL,
-    description TEXT
+    description TEXT,
+    INDEX idx_parent_id (parent_id)
 );
 
 -- 4. Products (Explicit FK to categories)
@@ -65,7 +67,23 @@ CREATE TABLE orders (
     currency VARCHAR(3) DEFAULT 'USD',
     payment_method VARCHAR(50) DEFAULT NULL,
     shipping_notes TEXT DEFAULT NULL,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_customer_id (customer_id)
+);
+
+-- 5b. Tags (PK is VARCHAR uuid, not INT id - tests non-standard PK resolution)
+CREATE TABLE tags (
+    uuid VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+-- 5c. Product Tags (tag_id is INT but tags.uuid is VARCHAR - type mismatch, should be rejected)
+CREATE TABLE product_tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    CONSTRAINT fk_pt_product FOREIGN KEY (product_id) REFERENCES products(id)
+    -- tag_id intentionally has no FK constraint, and type mismatches tags.uuid (VARCHAR vs INT)
 );
 
 -- 6. Order Items (Mixed: Explicit FK to orders, Heuristic FK to products)
@@ -88,9 +106,11 @@ INSERT INTO shipping_addresses (customer_id, street, city, country) VALUES
     (1, '123 Main St', 'New York', 'USA'),
     (2, '456 Oak Ave', 'London', 'UK');
 
-INSERT INTO categories (name, description) VALUES
-    ('Electronics', 'Gadgets and devices'),
-    ('Books', 'Physical and digital books');
+INSERT INTO categories (parent_id, name, description) VALUES
+    (NULL, 'Electronics', 'Gadgets and devices'),
+    (NULL, 'Books', 'Physical and digital books'),
+    (1, 'Smartphones', 'Mobile phones and accessories'),
+    (1, 'Audio', 'Headphones, speakers, and audio gear');
 
 INSERT INTO products (category_id, name, price, stock) VALUES
     (1, 'Smartphone X', 999.00, 50),
@@ -105,6 +125,14 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
     (1, 1, 1, 999.00), -- John bought 1 Smartphone
     (1, 2, 2, 199.50), -- John bought 2 Headphones
     (2, 3, 1, 39.99);  -- Jane bought 1 Book
+
+INSERT INTO tags (uuid, name) VALUES
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'bestseller'),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'new-arrival');
+
+INSERT INTO product_tags (product_id, tag_id) VALUES
+    (1, 1),
+    (2, 2);
 
 -- BULK SEED DATA (For Safe-Query Optimizer Testing & Benchmark)
 DELIMITER //
@@ -147,3 +175,6 @@ DROP PROCEDURE SeedLargeData;
 -- Force InnoDB to update statistics so EXPLAIN is accurate immediately
 ANALYZE TABLE customers;
 ANALYZE TABLE orders;
+ANALYZE TABLE categories;
+ANALYZE TABLE tags;
+ANALYZE TABLE product_tags;

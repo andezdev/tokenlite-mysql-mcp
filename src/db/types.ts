@@ -3,6 +3,7 @@ export interface ForeignKey {
     referencedTable: string;
     referencedColumn: string;
     isHeuristic: boolean;
+    confidence?: number;
 }
 
 export interface TableNode {

@@ -132,6 +132,21 @@ Translate integer statuses or internal jargon so the LLM understands the data.
 }
 ```
 
+### Custom Relationships
+Define FK mappings the heuristic engine can't auto-detect (e.g., `created_by → users`). Add a `_relationships` key to your `metadata.json`:
+```json
+{
+  "orders.status": { "pending": "...", "shipped": "..." },
+  "_relationships": {
+    "orders.created_by": "users.id",
+    "categories.parent_id": "categories.id"
+  }
+}
+```
+These are treated as authoritative (not heuristic) and take priority over automatic detection.
+
+The heuristic engine also assigns a **confidence score** (0–100) to each inferred FK based on name matching (+40), data type validation (+30), primary key verification (+20), and index presence (+10). Only FKs scoring ≥70 are accepted.
+
 ### `templates.json` (Pre-approved SQL)
 Stop the LLM from hallucinating complex metrics by providing vetted templates.
 ```json

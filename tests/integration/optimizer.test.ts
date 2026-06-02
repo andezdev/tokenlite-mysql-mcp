@@ -32,7 +32,6 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
     });
 
     it('should include index hint in the error when full table scan is blocked', async () => {
-        // 'orders' has no secondary indexes, only PRIMARY
         const sql = "SELECT * FROM orders WHERE status = 'shipped'";
 
         try {
@@ -40,8 +39,8 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
             expect.unreachable('should have thrown');
         } catch (e: any) {
             expect(e).toBeInstanceOf(OptimizerError);
-            expect(e.message).toContain('No secondary indexes found');
-            expect(e.message).toContain('PRIMARY KEY');
+            expect(e.message).toContain('Available indexes');
+            expect(e.message).toContain('idx_customer_id');
         }
     });
 
