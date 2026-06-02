@@ -13,8 +13,10 @@ interface PingResponse {
     error?: string;
 }
 
+export const PING_CONTENT_ANNOTATIONS = { audience: ["user" as const], priority: 0.3 };
+
 export async function handlePing(): Promise<{
-    content: { type: "text"; text: string }[];
+    content: { type: "text"; text: string; annotations?: Record<string, unknown> }[];
     structuredContent?: Record<string, unknown>;
     isError?: boolean;
 }> {
@@ -33,7 +35,7 @@ export async function handlePing(): Promise<{
             pool: poolInfo,
         };
         return {
-            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2), annotations: PING_CONTENT_ANNOTATIONS }],
             structuredContent: response as unknown as Record<string, unknown>,
         };
     } catch (error: any) {
@@ -43,7 +45,7 @@ export async function handlePing(): Promise<{
             error: error.message,
         };
         return {
-            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+            content: [{ type: "text" as const, text: JSON.stringify(response, null, 2), annotations: PING_CONTENT_ANNOTATIONS }],
             structuredContent: response as unknown as Record<string, unknown>,
             isError: true,
         };

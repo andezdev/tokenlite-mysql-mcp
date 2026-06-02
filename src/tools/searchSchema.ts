@@ -7,6 +7,8 @@ import { getTableSemantics } from "../db/metadata.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
 
 
+export const SEARCH_SCHEMA_CONTENT_ANNOTATIONS = { audience: ["assistant" as const], priority: 0.9 };
+
 export async function handleSearchSchema({ query }: { query: string }) {
     checkRateLimit();
 
@@ -92,7 +94,7 @@ export async function handleSearchSchema({ query }: { query: string }) {
     output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */";
 
     return {
-        content: [{ type: "text" as const, text: output }]
+        content: [{ type: "text" as const, text: output, annotations: SEARCH_SCHEMA_CONTENT_ANNOTATIONS }]
     };
 }
 

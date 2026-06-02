@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildSchemaGraph } from "../db/schema.js";
 
+export const REFRESH_SCHEMA_CONTENT_ANNOTATIONS = { audience: ["assistant" as const], priority: 0.2 };
+
 export function registerRefreshSchemaTool(server: McpServer, prefix: string = "") {
     server.registerTool(
         `${prefix}refresh_schema`,
@@ -12,11 +14,11 @@ export function registerRefreshSchemaTool(server: McpServer, prefix: string = ""
             try {
                 await buildSchemaGraph();
                 return {
-                    content: [{ type: "text" as const, text: "Schema Graph rebuilt successfully. You can now use search_schema to explore the updated relationships." }]
+                    content: [{ type: "text" as const, text: "Schema Graph rebuilt successfully. You can now use search_schema to explore the updated relationships.", annotations: REFRESH_SCHEMA_CONTENT_ANNOTATIONS }]
                 };
             } catch (error: any) {
                 return {
-                    content: [{ type: "text" as const, text: `Failed to rebuild schema graph: ${error.message}` }],
+                    content: [{ type: "text" as const, text: `Failed to rebuild schema graph: ${error.message}`, annotations: REFRESH_SCHEMA_CONTENT_ANNOTATIONS }],
                     isError: true
                 };
             }

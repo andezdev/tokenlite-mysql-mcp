@@ -5,6 +5,8 @@ import { jsonToCsv } from "../utils/csvFormatter.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
 
 
+export const EXECUTE_QUERY_CONTENT_ANNOTATIONS = { audience: ["user" as const, "assistant" as const], priority: 0.7 };
+
 export async function handleExecuteQuery({ sql }: { sql: string }) {
     try {
         checkRateLimit();
@@ -14,17 +16,17 @@ export async function handleExecuteQuery({ sql }: { sql: string }) {
         if (Array.isArray(result)) {
             const csvData = jsonToCsv(result);
             return {
-                content: [{ type: "text" as const, text: csvData }]
+                content: [{ type: "text" as const, text: csvData, annotations: EXECUTE_QUERY_CONTENT_ANNOTATIONS }]
             };
-        } 
+        }
         // If it's a DML/DDL operation, result is a ResultSetHeader object
         else {
             const header = result as any;
-            const message = `Operation executed successfully.\nAffected rows: ${header.affectedRows || 0}` + 
+            const message = `Operation executed successfully.\nAffected rows: ${header.affectedRows || 0}` +
                             (header.insertId ? `\nInsert ID: ${header.insertId}` : '') +
                             (header.changedRows ? `\nChanged rows: ${header.changedRows}` : '');
             return {
-                content: [{ type: "text" as const, text: message }]
+                content: [{ type: "text" as const, text: message, annotations: EXECUTE_QUERY_CONTENT_ANNOTATIONS }]
             };
         }
     } catch (error: any) {

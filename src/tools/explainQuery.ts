@@ -4,13 +4,15 @@ import { pool } from "../db/index.js";
 import { jsonToCsv } from "../utils/csvFormatter.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
 
+export const EXPLAIN_QUERY_CONTENT_ANNOTATIONS = { audience: ["assistant" as const], priority: 0.5 };
+
 export async function handleExplainQuery({ sql }: { sql: string }) {
     try {
         checkRateLimit();
         const [rows] = await pool.query<any[]>(`EXPLAIN ${sql}`);
         const csv = jsonToCsv(rows as Record<string, any>[]);
         return {
-            content: [{ type: "text" as const, text: csv }],
+            content: [{ type: "text" as const, text: csv, annotations: EXPLAIN_QUERY_CONTENT_ANNOTATIONS }],
             structuredContent: { rows } as unknown as Record<string, unknown>,
         };
     } catch (error: any) {
