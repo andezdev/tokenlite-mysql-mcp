@@ -52,15 +52,17 @@ export function registerExecuteQueryTool(server: McpServer, prefix: string = "")
     // If any write operation is enabled, this tool is no longer read-only
     const isReadOnly = !(allowInsert || allowUpdate || allowDelete || allowDdl); 
     
-    server.tool(
+    server.registerTool(
         `${prefix}execute_safe_query`,
-        "Executes a safe SELECT query on the database. Large results are automatically truncated. CRITICAL: NEVER use this tool (e.g., SHOW TABLES or querying information_schema) to understand the database structure. You MUST ALWAYS use the 'search_schema' tool first to understand the relationships and tables before writing any JOIN queries.",
         {
-            sql: z.string().max(10000).describe("SQL SELECT statement to execute."),
-        },
-        {
-            readOnlyHint: isReadOnly,
-            destructiveHint: allowDelete || allowDdl,
+            description: "Executes a safe SELECT query on the database. Large results are automatically truncated. CRITICAL: NEVER use this tool (e.g., SHOW TABLES or querying information_schema) to understand the database structure. You MUST ALWAYS use the 'search_schema' tool first to understand the relationships and tables before writing any JOIN queries.",
+            inputSchema: {
+                sql: z.string().max(10000).describe("SQL SELECT statement to execute."),
+            },
+            annotations: {
+                readOnlyHint: isReadOnly,
+                destructiveHint: allowDelete || allowDdl,
+            },
         },
         handleExecuteQuery
     );

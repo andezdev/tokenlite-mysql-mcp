@@ -2,11 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildSchemaGraph } from "../db/schema.js";
 
 export function registerRefreshSchemaTool(server: McpServer, prefix: string = "") {
-    server.tool(
+    server.registerTool(
         `${prefix}refresh_schema`,
-        "Forces the MCP server to rebuild the internal Schema Graph. Use this if you suspect a DBA recently added a table, column, or foreign key and the search_schema or execute queries are failing.",
-        {},
-        { readOnlyHint: true, idempotentHint: true },
+        {
+            description: "Forces the MCP server to rebuild the internal Schema Graph. Use this if you suspect a DBA recently added a table, column, or foreign key and the search_schema or execute queries are failing.",
+            annotations: { readOnlyHint: true, idempotentHint: true },
+        },
         async () => {
             try {
                 await buildSchemaGraph();

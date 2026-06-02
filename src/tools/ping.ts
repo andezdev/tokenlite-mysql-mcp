@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import { pool } from "../db/index.js";
 
 interface PingResponse {
@@ -12,7 +13,11 @@ interface PingResponse {
     error?: string;
 }
 
-export async function handlePing(): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
+export async function handlePing(): Promise<{
+    content: { type: "text"; text: string }[];
+    structuredContent?: Record<string, unknown>;
+    isError?: boolean;
+}> {
     const rawPool = pool.pool as any;
     const poolInfo = {
         active: rawPool._allConnections?.length ?? 0,
@@ -29,6 +34,7 @@ export async function handlePing(): Promise<{ content: { type: "text"; text: str
         };
         return {
             content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+            structuredContent: response as unknown as Record<string, unknown>,
         };
     } catch (error: any) {
         const response: PingResponse = {
@@ -38,19 +44,33 @@ export async function handlePing(): Promise<{ content: { type: "text"; text: str
         };
         return {
             content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+            structuredContent: response as unknown as Record<string, unknown>,
             isError: true,
         };
     }
 }
 
+export const pingOutputSchema = {
+    status: z.enum(["ok", "error"]).describe("Whether the database connection is healthy"),
+    server_version: z.string().optional().describe("MySQL server version"),
+    pool: z.object({
+        active: z.number().describe("Active connections in the pool"),
+        idle: z.number().describe("Idle connections in the pool"),
+        queue: z.number().describe("Queued requests waiting for a connection"),
+    }),
+    error: z.string().optional().describe("Error message if status is 'error'"),
+};
+
 export function registerPingTool(server: McpServer, prefix: string = "") {
-    server.tool(
+    server.registerTool(
         `${prefix}ping`,
-        "Health check: verifies the database connection is alive and returns pool stats and server version.",
-        {},
         {
-            readOnlyHint: true,
-            openWorldHint: false,
+            description: "Health check: verifies the database connection is alive and returns pool stats and server version.",
+            outputSchema: pingOutputSchema,
+            annotations: {
+                readOnlyHint: true,
+                openWorldHint: false,
+            },
         },
         handlePing
     );

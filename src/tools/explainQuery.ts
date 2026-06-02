@@ -11,6 +11,7 @@ export async function handleExplainQuery({ sql }: { sql: string }) {
         const csv = jsonToCsv(rows as Record<string, any>[]);
         return {
             content: [{ type: "text" as const, text: csv }],
+            structuredContent: { rows } as unknown as Record<string, unknown>,
         };
     } catch (error: any) {
         return {
@@ -20,16 +21,36 @@ export async function handleExplainQuery({ sql }: { sql: string }) {
     }
 }
 
+const explainRowSchema = z.object({
+    id: z.number().nullable().describe("SELECT identifier"),
+    select_type: z.string().nullable().describe("Type of SELECT (SIMPLE, PRIMARY, SUBQUERY, etc.)"),
+    table: z.string().nullable().describe("Table name"),
+    type: z.string().nullable().describe("Join type (ALL, index, range, ref, const, etc.)"),
+    possible_keys: z.string().nullable().describe("Indexes that could be used"),
+    key: z.string().nullable().describe("Index actually chosen"),
+    key_len: z.string().nullable().describe("Length of the chosen key"),
+    ref: z.string().nullable().describe("Columns compared to the index"),
+    rows: z.number().nullable().describe("Estimated rows to examine"),
+    Extra: z.string().nullable().describe("Additional information"),
+});
+
+export const explainOutputSchema = {
+    rows: z.array(explainRowSchema).describe("EXPLAIN output rows"),
+};
+
 export function registerExplainQueryTool(server: McpServer, prefix: string = "") {
-    server.tool(
+    server.registerTool(
         `${prefix}explain_query`,
-        "Returns the MySQL EXPLAIN output for a SELECT query. Use this to understand index usage, join types, and row estimates before rewriting a blocked or slow query.",
         {
-            sql: z.string().max(10000).describe("The SELECT query to analyze."),
-        },
-        {
-            readOnlyHint: true,
-            idempotentHint: true,
+            description: "Returns the MySQL EXPLAIN output for a SELECT query. Use this to understand index usage, join types, and row estimates before rewriting a blocked or slow query.",
+            inputSchema: {
+                sql: z.string().max(10000).describe("The SELECT query to analyze."),
+            },
+            outputSchema: explainOutputSchema,
+            annotations: {
+                readOnlyHint: true,
+                idempotentHint: true,
+            },
         },
         handleExplainQuery
     );

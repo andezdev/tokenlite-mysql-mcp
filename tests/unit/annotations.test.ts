@@ -3,19 +3,19 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 describe('Tool Annotations', () => {
     let server: McpServer;
-    let toolSpy: ReturnType<typeof vi.spyOn>;
+    let registerToolSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         server = new McpServer({ name: "test", version: "1.0.0" });
-        toolSpy = vi.spyOn(server, 'tool');
+        registerToolSpy = vi.spyOn(server, 'registerTool');
     });
 
     it('search_schema should have readOnlyHint and openWorldHint: false', async () => {
         const { registerSearchSchemaTool } = await import('../../src/tools/searchSchema');
         registerSearchSchemaTool(server, "t_");
 
-        const annotationsArg = toolSpy.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: true,
             openWorldHint: false,
         });
@@ -30,8 +30,8 @@ describe('Tool Annotations', () => {
         const { registerExecuteQueryTool } = await import('../../src/tools/executeQuery');
         registerExecuteQueryTool(server, "t_");
 
-        const annotationsArg = toolSpy.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: true,
             destructiveHint: false,
         });
@@ -42,13 +42,13 @@ describe('Tool Annotations', () => {
 
         vi.resetModules();
         const server2 = new McpServer({ name: "test2", version: "1.0.0" });
-        const toolSpy2 = vi.spyOn(server2, 'tool');
+        const spy2 = vi.spyOn(server2, 'registerTool');
 
         const { registerExecuteQueryTool } = await import('../../src/tools/executeQuery');
         registerExecuteQueryTool(server2, "t_");
 
-        const annotationsArg = toolSpy2.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = spy2.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: false,
             destructiveHint: true,
         });
@@ -61,13 +61,13 @@ describe('Tool Annotations', () => {
 
         vi.resetModules();
         const server3 = new McpServer({ name: "test3", version: "1.0.0" });
-        const toolSpy3 = vi.spyOn(server3, 'tool');
+        const spy3 = vi.spyOn(server3, 'registerTool');
 
         const { registerExecuteQueryTool } = await import('../../src/tools/executeQuery');
         registerExecuteQueryTool(server3, "t_");
 
-        const annotationsArg = toolSpy3.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = spy3.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: false,
             destructiveHint: true,
         });
@@ -79,8 +79,8 @@ describe('Tool Annotations', () => {
         const { registerRefreshSchemaTool } = await import('../../src/tools/refreshSchema');
         registerRefreshSchemaTool(server, "t_");
 
-        const annotationsArg = toolSpy.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: true,
             idempotentHint: true,
         });
@@ -90,10 +90,37 @@ describe('Tool Annotations', () => {
         const { registerPingTool } = await import('../../src/tools/ping');
         registerPingTool(server, "t_");
 
-        const annotationsArg = toolSpy.mock.calls[0][3];
-        expect(annotationsArg).toMatchObject({
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.annotations).toMatchObject({
             readOnlyHint: true,
             openWorldHint: false,
         });
+    });
+
+    it('ping should have outputSchema defined', async () => {
+        const { registerPingTool } = await import('../../src/tools/ping');
+        registerPingTool(server, "t_");
+
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.outputSchema).toBeDefined();
+        expect(config.outputSchema.status).toBeDefined();
+        expect(config.outputSchema.pool).toBeDefined();
+    });
+
+    it('explain_query should have outputSchema defined', async () => {
+        const { registerExplainQueryTool } = await import('../../src/tools/explainQuery');
+        registerExplainQueryTool(server, "t_");
+
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.outputSchema).toBeDefined();
+        expect(config.outputSchema.rows).toBeDefined();
+    });
+
+    it('execute_safe_query should NOT have outputSchema (dynamic columns)', async () => {
+        const { registerExecuteQueryTool } = await import('../../src/tools/executeQuery');
+        registerExecuteQueryTool(server, "t_");
+
+        const config = registerToolSpy.mock.calls[0][1] as any;
+        expect(config.outputSchema).toBeUndefined();
     });
 });

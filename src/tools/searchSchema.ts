@@ -97,13 +97,15 @@ export async function handleSearchSchema({ query }: { query: string }) {
 }
 
 export function registerSearchSchemaTool(server: McpServer, prefix: string = "") {
-    server.tool(
+    server.registerTool(
         `${prefix}search_schema`,
-        "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this tool FIRST to understand the database structure. Searches for a table and returns its exact SQL DDL, along with the DDL of its direct parent and child tables (Auto-Join Context). Do NOT use execute_safe_query for schema exploration.",
         {
-            query: z.string().max(200).describe("The name of the table or entity to search for (e.g. 'users', 'invoices')."),
+            description: "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this tool FIRST to understand the database structure. Searches for a table and returns its exact SQL DDL, along with the DDL of its direct parent and child tables (Auto-Join Context). Do NOT use execute_safe_query for schema exploration.",
+            inputSchema: {
+                query: z.string().max(200).describe("The name of the table or entity to search for (e.g. 'users', 'invoices')."),
+            },
+            annotations: { readOnlyHint: true, openWorldHint: false },
         },
-        { readOnlyHint: true, openWorldHint: false },
         handleSearchSchema
     );
 }
