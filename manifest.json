@@ -55,6 +55,7 @@
         "MCP_SAFE_QUERY_ENABLE_BLOCKING": "${user_config.mcp_safe_query_enable_blocking}",
         "MCP_METADATA_PATH": "${user_config.mcp_metadata_path}",
         "MCP_TEMPLATES_PATH": "${user_config.mcp_templates_path}",
+        "MCP_RATE_LIMIT_RPM": "${user_config.mcp_rate_limit_rpm}",
         "ALLOW_INSERT_OPERATION": "${user_config.allow_insert_operation}",
         "ALLOW_UPDATE_OPERATION": "${user_config.allow_update_operation}",
         "ALLOW_DELETE_OPERATION": "${user_config.allow_delete_operation}",
@@ -122,6 +123,13 @@
       "type": "string",
       "title": "Templates Path",
       "description": "Absolute path to your custom templates.json queries.",
+      "required": false
+    },
+    "mcp_rate_limit_rpm": {
+      "type": "number",
+      "title": "Rate Limit (RPM)",
+      "description": "Max tool invocations per minute (sliding window). Set to 0 to disable.",
+      "default": 60,
       "required": false
     },
     "allow_insert_operation": {

@@ -52,6 +52,11 @@ configSchema:
       type: "string"
       title: "Tool Prefix"
       description: "Prefix for tool names. Defaults to DB_NAME (e.g. mydb_). Only set this to override the automatic prefix."
+    MCP_RATE_LIMIT_RPM:
+      type: "integer"
+      title: "Rate Limit (RPM)"
+      default: 60
+      description: "Max tool invocations per minute (sliding window). Set to 0 to disable."
     MYSQL_QUERY_TIMEOUT:
       type: "integer"
       title: "Query Timeout"
@@ -127,6 +132,7 @@ commandFunction: |-
     if (config.MCP_METADATA_PATH !== undefined) env.MCP_METADATA_PATH = config.MCP_METADATA_PATH;
     if (config.MCP_TEMPLATES_PATH !== undefined) env.MCP_TEMPLATES_PATH = config.MCP_TEMPLATES_PATH;
     if (config.TOOL_PREFIX !== undefined) env.TOOL_PREFIX = config.TOOL_PREFIX;
+    if (config.MCP_RATE_LIMIT_RPM !== undefined) env.MCP_RATE_LIMIT_RPM = config.MCP_RATE_LIMIT_RPM.toString();
     if (config.MYSQL_QUERY_TIMEOUT !== undefined) env.MYSQL_QUERY_TIMEOUT = config.MYSQL_QUERY_TIMEOUT.toString();
     if (config.MYSQL_CONNECTION_LIMIT !== undefined) env.MYSQL_CONNECTION_LIMIT = config.MYSQL_CONNECTION_LIMIT.toString();
     if (config.MYSQL_CONNECT_TIMEOUT !== undefined) env.MYSQL_CONNECT_TIMEOUT = config.MYSQL_CONNECT_TIMEOUT.toString();

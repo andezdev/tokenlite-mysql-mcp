@@ -78,6 +78,12 @@
           "format": "string"
         },
         {
+          "name": "MCP_RATE_LIMIT_RPM",
+          "description": "Max tool invocations per minute, sliding window (defaults to 60). Set to 0 to disable.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
           "name": "MYSQL_QUERY_TIMEOUT",
           "description": "Max execution time for a query in milliseconds to protect against DoS (defaults to 15000)",
           "isRequired": false,

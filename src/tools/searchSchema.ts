@@ -4,9 +4,12 @@ import Fuse from "fuse.js";
 import { pool } from "../db/index.js";
 import { schemaGraph, getTableDDL } from "../db/schema.js";
 import { getTableSemantics } from "../db/metadata.js";
+import { checkRateLimit } from "../utils/rateLimiter.js";
 
 
 export async function handleSearchSchema({ query }: { query: string }) {
+    checkRateLimit();
+
     if (schemaGraph.size === 0) {
         return {
             content: [{ type: "text" as const, text: "Schema Graph is empty. Make sure the database is connected." }],

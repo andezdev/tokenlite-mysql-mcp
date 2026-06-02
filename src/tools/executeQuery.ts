@@ -2,10 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { executeSafeQuery } from "../db/index.js";
 import { jsonToCsv } from "../utils/csvFormatter.js";
+import { checkRateLimit } from "../utils/rateLimiter.js";
 
 
 export async function handleExecuteQuery({ sql }: { sql: string }) {
     try {
+        checkRateLimit();
         const result = await executeSafeQuery(sql);
         
         // If it's a SELECT, result are rows

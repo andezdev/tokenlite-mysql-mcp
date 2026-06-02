@@ -26,7 +26,10 @@ TokenLite MCP is designed with a **Defense in Depth** strategy to guarantee abso
 3. **Layer 3: Environment Isolation**
    In a production setup, the database credentials (`DB_PASSWORD`) should be loaded in the environment of the MCP process internally, without explicitly printing them in the prompt. If the LLM never sees the password, it cannot build the raw terminal command to attempt a bypass.
 
-4. **Layer 4: Input Validation**
+4. **Layer 4: Rate Limiting**
+   A sliding-window rate limiter restricts tool invocations to `MCP_RATE_LIMIT_RPM` requests per minute (default: 60). This prevents aggressive agents from overwhelming the database with high-frequency requests. Set to `0` to disable.
+
+5. **Layer 5: Input Validation**
    All tool inputs are validated with strict bounds:
    - `execute_safe_query`: SQL limited to **10,000 characters** max.
    - `search_schema`: search query limited to **200 characters** max.

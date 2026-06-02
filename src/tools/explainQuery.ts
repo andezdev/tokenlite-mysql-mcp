@@ -2,9 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { pool } from "../db/index.js";
 import { jsonToCsv } from "../utils/csvFormatter.js";
+import { checkRateLimit } from "../utils/rateLimiter.js";
 
 export async function handleExplainQuery({ sql }: { sql: string }) {
     try {
+        checkRateLimit();
         const [rows] = await pool.query<any[]>(`EXPLAIN ${sql}`);
         const csv = jsonToCsv(rows as Record<string, any>[]);
         return {
