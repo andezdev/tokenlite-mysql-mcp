@@ -23,6 +23,10 @@ async function main() {
     }, {
         capabilities: {
             logging: {},
+            resources: {
+                subscribe: true,
+                listChanged: true,
+            },
         },
     });
 

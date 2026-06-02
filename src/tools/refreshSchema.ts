@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildSchemaGraph } from "../db/schema.js";
+import { notifyResourceSubscribers } from "../resources/tables.js";
 
 export const REFRESH_SCHEMA_CONTENT_ANNOTATIONS = { audience: ["assistant" as const], priority: 0.2 };
 
@@ -13,6 +14,7 @@ export function registerRefreshSchemaTool(server: McpServer, prefix: string = ""
         async () => {
             try {
                 await buildSchemaGraph();
+                await notifyResourceSubscribers(server);
                 return {
                     content: [{ type: "text" as const, text: "Schema Graph rebuilt successfully. You can now use search_schema to explore the updated relationships.", annotations: REFRESH_SCHEMA_CONTENT_ANNOTATIONS }]
                 };
