@@ -18,11 +18,10 @@ export function jsonToCsv(data: Record<string, any>[]): string {
         const values = headers.map(header => {
             const val = row[header];
             if (val === null || val === undefined) {
-                return "";
+                return "∅";
             }
-            // If the value contains commas, quotes, or newlines, it must be escaped
             const strVal = String(val);
-            if (strVal.includes(",") || strVal.includes("\"") || strVal.includes("\n")) {
+            if (strVal.includes(",") || strVal.includes("\"") || strVal.includes("\n") || strVal === "∅") {
                 return `"${strVal.replace(/"/g, "\"\"")}"`;
             }
             return strVal;

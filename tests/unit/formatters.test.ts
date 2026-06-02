@@ -24,4 +24,36 @@ describe('jsonToCsv Formatter', () => {
         const csv = jsonToCsv(data);
         expect(csv).toBe("No data returned.");
     });
+
+    it('should represent NULL values as ∅', () => {
+        const data = [
+            { id: 1, name: null, email: 'a@b.com' },
+            { id: 2, name: 'Bob', email: null },
+        ];
+        const csv = jsonToCsv(data);
+        expect(csv).toBe('id,name,email\n1,∅,a@b.com\n2,Bob,∅');
+    });
+
+    it('should represent undefined values as ∅', () => {
+        const data = [{ id: 1, name: undefined }];
+        const csv = jsonToCsv(data);
+        expect(csv).toBe('id,name\n1,∅');
+    });
+
+    it('should quote the literal string "∅" to distinguish from NULL marker', () => {
+        const data = [{ id: 1, symbol: '∅' }];
+        const csv = jsonToCsv(data);
+        expect(csv).toBe('id,symbol\n1,"∅"');
+    });
+
+    it('should not confuse the string "NULL" with actual NULL', () => {
+        const data = [
+            { id: 1, status: null },
+            { id: 2, status: 'NULL' },
+        ];
+        const csv = jsonToCsv(data);
+        const lines = csv.split('\n');
+        expect(lines[1]).toBe('1,∅');
+        expect(lines[2]).toBe('2,NULL');
+    });
 });
