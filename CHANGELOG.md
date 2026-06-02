@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.1.1...tokenlite-mysql-mcp-v4.0.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Tool names are now deterministic by default, derived from DB_NAME (e.g., DB_NAME=crm produces crm_search_schema).
+
+### Features
+
+* add audience and priority annotations to tool responses ([a931ee6](https://github.com/andezdev/tokenlite-mysql-mcp/commit/a931ee64761c5b6b77d8b9a7a9aa78327c771cc6))
+* add confidence scoring and type validation to FK heuristic ([eaca259](https://github.com/andezdev/tokenlite-mysql-mcp/commit/eaca259548774b21122d2713d52e5c1afe0a274c))
+* add outputSchema and structuredContent to ping and explain_query ([bf04a8a](https://github.com/andezdev/tokenlite-mysql-mcp/commit/bf04a8ac70f8e7ae5690310bd4168de9b17ab9fa))
+* add sliding window rate limiter for tool invocations ([8bf0fa0](https://github.com/andezdev/tokenlite-mysql-mcp/commit/8bf0fa061c3bfdcad6a203c43fc52f8f5568e1d1))
+* derive tool prefix from DB_NAME instead of random generation ([178683a](https://github.com/andezdev/tokenlite-mysql-mcp/commit/178683ada0608256a7a1e44426204bcd1ec9ca68))
+* include available indexes in optimizer error messages ([25cd1b3](https://github.com/andezdev/tokenlite-mysql-mcp/commit/25cd1b397488d6a5046c61903b68837a4a0c9272))
+* represent NULL values as ∅ in CSV output for type safety ([dd54803](https://github.com/andezdev/tokenlite-mysql-mcp/commit/dd5480316a12dc2e5a96da576343a12a46b33ad7))
+* support resource subscriptions for schema change notifications ([5a2ded0](https://github.com/andezdev/tokenlite-mysql-mcp/commit/5a2ded0fc113ff6b9b28178336594236d1f618cd))
+
 ## [3.1.1](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.1.0...tokenlite-mysql-mcp-v3.1.1) (2026-06-01)
 
 
