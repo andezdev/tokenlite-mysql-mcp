@@ -1,7 +1,9 @@
 # 🤖 AI Agents Guide: TokenLite MySQL MCP
 
 > **Notice to LLMs, Agents, and Coding Assistants:**
-> If you are reading this file, you have been connected to the TokenLite MySQL MCP Server. This server is heavily protected and optimized to prevent hallucinations, reduce context window bloat, and block dangerous operations. 
+> If you are reading this file, you have been connected to the TokenLite MySQL MCP Server. This server is heavily protected and optimized to prevent hallucinations, reduce context window bloat, and block dangerous operations.
+>
+> Tool names are prefixed with the database name (e.g., `mydb_search_schema`, `mydb_execute_safe_query`). If a custom `TOOL_PREFIX` is set, that prefix is used instead.
 > 
 > **You MUST follow the rules below strictly.**
 

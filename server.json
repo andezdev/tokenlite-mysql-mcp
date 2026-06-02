@@ -73,7 +73,7 @@
         },
         {
           "name": "TOOL_PREFIX",
-          "description": "Prefix for tool names, e.g., to run multiple instances (defaults to random prefix like db_a1b2_)",
+          "description": "Prefix for tool names, e.g., to run multiple instances (defaults to DB_NAME, e.g. mydb_). Only set to override.",
           "isRequired": false,
           "format": "string"
         },

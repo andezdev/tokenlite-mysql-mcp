@@ -100,7 +100,7 @@ To use within Cursor IDE:
 | `MCP_SAFE_QUERY_ENABLE_BLOCKING`| Enable or disable the EXPLAIN guardrail. | `true` | No |
 | `MCP_METADATA_PATH` | Absolute path to your custom `metadata.json` dictionary. | (Disabled) | No |
 | `MCP_TEMPLATES_PATH` | Absolute path to your custom `templates.json` queries. | (Disabled) | No |
-| `TOOL_PREFIX` | Prefix for tool names (useful when running multiple instances). | Random (e.g., `db_a1b2_`) | No |
+| `TOOL_PREFIX` | Prefix for tool names (useful when running multiple instances). | Derived from `DB_NAME` (e.g., `mydb_`). Random fallback only if `DB_NAME` is unset. | No |
 | `MYSQL_QUERY_TIMEOUT` | Max execution time for a query (in ms). Aborts heavy queries to protect against DoS. | `15000` | No |
 | `MYSQL_CONNECTION_LIMIT` | Max concurrent pool connections. | `10` | No |
 | `MYSQL_CONNECT_TIMEOUT` | Max time to wait for a socket to establish (in ms). | `10000` | No |

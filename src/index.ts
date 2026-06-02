@@ -38,11 +38,16 @@ async function main() {
     // Load Metadata and Templates
     initMetadata();
 
-    // Generate or use provided tool prefix (dev_, prod_ ...)
-    let prefix = process.env.TOOL_PREFIX; 
+    // Derive tool prefix: explicit TOOL_PREFIX > DB_NAME > fallback random
+    let prefix = process.env.TOOL_PREFIX;
     if (!prefix) {
-        const randomStr = Math.random().toString(36).substring(2, 6);
-        prefix = `db_${randomStr}_`;
+        const dbName = process.env.DB_NAME;
+        if (dbName) {
+            prefix = `${dbName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_`;
+        } else {
+            const randomStr = Math.random().toString(36).substring(2, 6);
+            prefix = `db_${randomStr}_`;
+        }
     }
 
     // Register MCP tools & prompts & resources
