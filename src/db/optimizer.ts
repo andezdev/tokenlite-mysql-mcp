@@ -72,6 +72,32 @@ export function injectLimitAst(sql: string, maxLimit: number = 500): { sql: stri
     }
 }
 
+const SAFE_TABLE_NAME = /^[a-zA-Z0-9_]+$/;
+
+export async function getIndexHint(tableName: string, pool: Pool): Promise<string> {
+    if (!tableName || !SAFE_TABLE_NAME.test(tableName)) {
+        return 'Please add an indexed filter (e.g., a specific ID) to your WHERE clause.';
+    }
+    try {
+        const [rows] = await pool.query<any[]>(`SHOW INDEX FROM \`${tableName}\``);
+        const indexes = new Map<string, string[]>();
+        for (const row of rows) {
+            if (row.Key_name === 'PRIMARY') continue;
+            const cols = indexes.get(row.Key_name) || [];
+            cols.push(row.Column_name);
+            indexes.set(row.Key_name, cols);
+        }
+        if (indexes.size === 0) {
+            return 'No secondary indexes found on this table. Add a WHERE clause on the PRIMARY KEY, or ask the DBA to create an index.';
+        }
+        const parts = Array.from(indexes.entries())
+            .map(([name, cols]) => `${name} (${cols.join(', ')})`);
+        return `Available indexes: ${parts.join('; ')}. Add a WHERE clause using one of these indexed columns.`;
+    } catch {
+        return 'Please add an indexed filter (e.g., a specific ID) to your WHERE clause.';
+    }
+}
+
 /**
  * Analyzes the query using EXPLAIN. If a Full Table Scan (type: ALL) is detected
  * on a table with more rows than MAX_ROWS, it blocks the query.
@@ -85,11 +111,13 @@ export async function analyzeQueryPlan(sql: string, pool: Pool): Promise<void> {
         const maxRows = getMaxRows();
         
         for (const row of planRows) {
-            // In standard EXPLAIN, row.type is the join type. 'ALL' means full table scan.
             if (row.type && row.type.toUpperCase() === 'ALL') {
                 const estimatedRows = parseInt(row.rows, 10);
                 if (!isNaN(estimatedRows) && estimatedRows > maxRows) {
-                    throw new OptimizerError(`Full table scan detected on table '${row.table}'. Estimated rows: ${estimatedRows}. Please add an indexed filter (e.g., a specific ID) to your WHERE clause.`);
+                    const indexHint = await getIndexHint(row.table, pool);
+                    throw new OptimizerError(
+                        `Full table scan detected on table '${row.table}'. Estimated rows: ${estimatedRows}. ${indexHint}`
+                    );
                 }
             }
         }

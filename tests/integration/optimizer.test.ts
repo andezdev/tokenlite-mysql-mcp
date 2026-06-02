@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { analyzeQueryPlan, OptimizerError } from '../../src/db/optimizer.js';
+import { analyzeQueryPlan, OptimizerError, getIndexHint } from '../../src/db/optimizer.js';
 import { pool } from '../../src/db/index.js';
 
 describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
@@ -29,6 +29,27 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
         
         // Should not throw
         await expect(analyzeQueryPlan(sql, pool)).resolves.toBeUndefined();
+    });
+
+    it('should include index hint in the error when full table scan is blocked', async () => {
+        // 'orders' has no secondary indexes, only PRIMARY
+        const sql = "SELECT * FROM orders WHERE status = 'shipped'";
+
+        try {
+            await analyzeQueryPlan(sql, pool);
+            expect.unreachable('should have thrown');
+        } catch (e: any) {
+            expect(e).toBeInstanceOf(OptimizerError);
+            expect(e.message).toContain('No secondary indexes found');
+            expect(e.message).toContain('PRIMARY KEY');
+        }
+    });
+
+    it('should list secondary indexes for tables that have them', async () => {
+        // 'shipping_addresses' has an explicit FK index on customer_id
+        const hint = await getIndexHint('shipping_addresses', pool);
+        expect(hint).toContain('Available indexes');
+        expect(hint).toContain('customer_id');
     });
 
     it('should allow queries that scan fewer rows than the threshold', async () => {
