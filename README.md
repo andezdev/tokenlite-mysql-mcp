@@ -14,7 +14,7 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 3. **Session-Level Defense in Depth**: If the server is configured in strict Read-Only mode (all write variables disabled), TokenLite injects `SET SESSION TRANSACTION READ ONLY` directly into the connection pool sockets. This guarantees that even if a theoretical bypass exists in the AST parser, the MySQL engine itself will physically reject any data modification.
 4. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
 5. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
-6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown, saving up to 60% of Output Tokens compared to verbose JSON.
+6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown with unambiguous NULL representation (`∅`), saving up to 50% of Output Tokens compared to verbose JSON.
 
 ---
 
@@ -179,7 +179,7 @@ Standard MCP servers dump the entire schema to the LLM. For large databases, thi
 | Scenario | Standard MCP Pattern | TokenLite | 📉 Savings |
 | :--- | :--- | :--- | :--- |
 | **Mock (50 tables, Enterprise CRM)** | 15,566 tokens | 883 tokens | **94.3%** |
-| **Live (7 tables, Test DB)** | 1,892 tokens | 257 tokens | **86.4%** |
+| **Live (9 tables, Test DB)** | 2,208 tokens | 531 tokens | **75.9%** |
 
 Savings scale with the number of tables: the more tables in the database, the higher the savings because the standard pattern dumps all of them while TokenLite only fetches the target + 1-hop relationships.
 
@@ -190,19 +190,19 @@ TokenLite converts raw database rows to a dense, structured CSV layout. This avo
 
 | Rows Returned | Standard MCP Pattern (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
 | :--- | :--- | :--- | :--- |
-| **10 rows** | 1,167 | 592 | **49.3%** |
-| **50 rows** | 5,805 | 2,875 | **50.5%** |
-| **100 rows** | 11,607 | 5,734 | **50.6%** |
-| **500 rows** | 57,998 | 28,578 | **50.7%** |
+| **10 rows** | 1,167 | 601 | **48.5%** |
+| **50 rows** | 5,803 | 2,927 | **49.6%** |
+| **100 rows** | 11,607 | 5,842 | **49.7%** |
+| **500 rows** | 57,990 | 29,119 | **49.8%** |
 
 **Live data** (real MySQL test database with NULLs, ENUMs, variable-length text):
 
 | Rows Returned | Standard MCP Pattern (Tokens) | TokenLite CSV (Tokens) | 📉 Output Savings (%) |
 | :--- | :--- | :--- | :--- |
-| **10 rows** | 1,007 | 575 | **42.9%** |
-| **50 rows** | 5,029 | 2,845 | **43.4%** |
-| **100 rows** | 10,071 | 5,699 | **43.4%** |
-| **500 rows** | 50,327 | 28,441 | **43.5%** |
+| **10 rows** | 1,007 | 628 | **37.6%** |
+| **50 rows** | 5,029 | 3,114 | **38.1%** |
+| **100 rows** | 10,071 | 6,232 | **38.1%** |
+| **500 rows** | 50,327 | 31,116 | **38.2%** |
 
 ---
 
