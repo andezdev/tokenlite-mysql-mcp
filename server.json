@@ -6,12 +6,12 @@
     "url": "https://github.com/andezdev/tokenlite-mysql-mcp",
     "source": "github"
   },
-  "version": "4.0.0",
+  "version": "4.1.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@andezdev/tokenlite-mysql-mcp",
-      "version": "4.0.0",
+      "version": "4.1.0",
       "transport": {
         "type": "stdio"
       },

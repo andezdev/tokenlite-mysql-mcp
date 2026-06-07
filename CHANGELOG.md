@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v4.0.0...tokenlite-mysql-mcp-v4.1.0) (2026-06-07)
+
+
+### Features
+
+* harden query safety, add configurable row limits, and improve MCP tooling ([5b4dcad](https://github.com/andezdev/tokenlite-mysql-mcp/commit/5b4dcad7e484dec82e07f6ecadf6bc83e905aaeb))
+
 ## [4.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v3.1.1...tokenlite-mysql-mcp-v4.0.0) (2026-06-02)
 
 

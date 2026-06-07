@@ -3,7 +3,7 @@
   "name": "tokenlite-mysql-mcp",
   "display_name": "TokenLite MySQL MCP",
   "icon": "",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "A secure, efficient, and intelligent MySQL database server for the Model Context Protocol",
   "long_description": "A highly optimized MySQL MCP server designed specifically for AI agents and coding assistants. It resolves typical context bloat and performance issues through a unique Graph-Based Semantic Schema (localizing schema discovery to Target + 1-hop relationships), strict Safe-Query Optimizer (preventing heavy unindexed table scans via AST parsing and EXPLAIN limits), Granular AST-Based Write Firewall (default read-only with surgical opt-in permissions), Session-Level Defense in Depth, and dense CSV token compression.",
   "author": {
