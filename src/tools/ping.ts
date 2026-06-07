@@ -67,7 +67,7 @@ export function registerPingTool(server: McpServer, prefix: string = "") {
     server.registerTool(
         `${prefix}ping`,
         {
-            description: "Health check: verifies the database connection is alive and returns pool stats and server version.",
+            description: "Health check: verifies the database connection is alive. Returns JSON with status, MySQL server version, and connection pool stats (active, idle, queued).",
             outputSchema: pingOutputSchema,
             annotations: {
                 readOnlyHint: true,

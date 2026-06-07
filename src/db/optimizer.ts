@@ -1,6 +1,7 @@
 import pkg from 'node-sql-parser';
 const { Parser } = pkg;
 import { Pool } from 'mysql2/promise';
+import { getExplainMaxScanRows, getQueryRowLimit } from '../utils/queryLimits.js';
 
 export class OptimizerError extends Error {
     code?: string;
@@ -12,39 +13,49 @@ export class OptimizerError extends Error {
 }
 
 const parser = new Parser();
-function getMaxRows(): number {
-    return process.env.MCP_SAFE_QUERY_MAX_ROWS ? parseInt(process.env.MCP_SAFE_QUERY_MAX_ROWS, 10) : 1000;
-}
 
 function isBlockingEnabled(): boolean {
     return process.env.MCP_SAFE_QUERY_ENABLE_BLOCKING !== 'false';
 }
 
+export interface ParseSqlResult {
+    sql: string;
+    astType: string;
+    appliedLimit?: number;
+    hasWhere?: boolean;
+}
+
+function parseSingleAst(sql: string): { ast: any; astOpt: { database: string } } {
+    const astOpt = { database: 'MySQL' };
+    let ast = parser.astify(sql, astOpt);
+
+    if (Array.isArray(ast)) {
+        if (ast.length > 1) {
+            throw new OptimizerError("Security Error: Multiple statements are not allowed.");
+        }
+        ast = ast[0];
+    }
+
+    return { ast, astOpt };
+}
+
+function getAppliedLimit(selectAst: any, maxLimit: number): number {
+    const limitValue = selectAst.limit?.value?.[0]?.value;
+    return typeof limitValue === 'number' ? limitValue : maxLimit;
+}
+
 /**
  * Parses the SQL query to AST, injects a LIMIT if missing for SELECTs, and returns the modified SQL and AST type.
  */
-export function injectLimitAst(sql: string, maxLimit: number = 500): { sql: string; astType: string } {
+export function injectLimitAst(sql: string, maxLimit: number = getQueryRowLimit()): ParseSqlResult {
     if (sql.trim().toUpperCase().startsWith('SHOW')) {
         return { sql, astType: 'show' };
     }
 
     try {
-        const astOpt = { database: 'MySQL' };
-        let ast = parser.astify(sql, astOpt);
-
-        // AST can be an array if multiple statements are provided.
-        if (Array.isArray(ast)) {
-            if (ast.length > 1) {
-                throw new OptimizerError("Security Error: Multiple statements are not allowed.");
-            }
-            ast = ast[0];
-        }
-        
-        // @ts-ignore
+        const { ast, astOpt } = parseSingleAst(sql);
         const type = ast.type?.toLowerCase();
 
-        // Only inject LIMIT and sqlify if it's a SELECT query.
-        // For DML/DDL, we just return the original SQL to avoid parser mangling.
         if (type === 'select') {
             const selectAst = ast as any;
             if (!selectAst.limit) {
@@ -60,15 +71,55 @@ export function injectLimitAst(sql: string, maxLimit: number = 500): { sql: stri
                     selectAst.limit.value[0].value = maxLimit;
                 }
             }
-            return { sql: parser.sqlify(selectAst, astOpt), astType: type };
+            return {
+                sql: parser.sqlify(selectAst, astOpt),
+                astType: type,
+                appliedLimit: getAppliedLimit(selectAst, maxLimit),
+            };
         }
 
-        return { sql, astType: type };
+        const hasWhere = type === 'update' || type === 'delete'
+            ? Boolean(ast.where)
+            : undefined;
+
+        return { sql, astType: type, hasWhere };
     } catch (e: any) {
         if (e instanceof OptimizerError) {
             throw e;
         }
         throw new OptimizerError(`SQL Syntax Error or Unsupported Feature: ${e.message}`);
+    }
+}
+
+/**
+ * Validates SQL intended for EXPLAIN. Blocks ANALYZE (which executes the query in MySQL 8)
+ * and non-SELECT statements.
+ */
+export function validateExplainSelect(sql: string, maxLimit: number = getQueryRowLimit()): ParseSqlResult {
+    const trimmed = sql.trim();
+    const upper = trimmed.toUpperCase();
+
+    if (upper.startsWith('ANALYZE')) {
+        throw new OptimizerError("Security Error: ANALYZE is not allowed. Only SELECT queries can be explained.");
+    }
+
+    const parsed = injectLimitAst(trimmed, maxLimit);
+
+    if (parsed.astType !== 'select') {
+        throw new OptimizerError(`Security Error: Only SELECT queries can be explained. Received '${parsed.astType}'.`);
+    }
+
+    return parsed;
+}
+
+/**
+ * Rejects UPDATE/DELETE statements that omit a WHERE clause to prevent mass modifications.
+ */
+export function assertWriteScope(astType: string, hasWhere?: boolean): void {
+    if ((astType === 'update' || astType === 'delete') && !hasWhere) {
+        throw new OptimizerError(
+            `Security Error: ${astType.toUpperCase()} without a WHERE clause is not allowed. Add a scoped filter to target specific rows.`
+        );
     }
 }
 
@@ -108,7 +159,7 @@ export async function analyzeQueryPlan(sql: string, pool: Pool): Promise<void> {
 
     try {
         const [planRows] = await pool.query<any[]>(`EXPLAIN ${sql}`);
-        const maxRows = getMaxRows();
+        const maxRows = getExplainMaxScanRows();
         
         for (const row of planRows) {
             if (row.type && row.type.toUpperCase() === 'ALL') {

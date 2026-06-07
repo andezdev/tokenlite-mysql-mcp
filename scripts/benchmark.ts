@@ -1,6 +1,6 @@
 import { getEncoding } from "js-tiktoken";
 import { jsonToCsv } from "../src/utils/csvFormatter.js";
-import { pingDb, pool } from "../src/db/index.js";
+import { pool } from "../src/db/index.js";
 import { buildSchemaGraph, schemaGraph } from "../src/db/schema.js";
 import { handleSearchSchema } from "../src/tools/searchSchema.js";
 import dotenv from "dotenv";
@@ -129,7 +129,13 @@ async function runBenchmark() {
     console.log("Note: Token counts are approximate. Claude 4.x uses a");
     console.log("proprietary tokenizer; actual counts may vary slightly.\n");
 
-    const dbConnected = await pingDb();
+    let dbConnected = false;
+    try {
+        await pool.query('SELECT 1');
+        dbConnected = true;
+    } catch {
+        dbConnected = false;
+    }
     let isLiveMode = false;
 
     if (dbConnected) {

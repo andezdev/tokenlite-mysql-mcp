@@ -1,4 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
+import { z } from 'zod';
+
+const explainRows = [{
+    id: 1,
+    select_type: 'SIMPLE',
+    table: 'customers',
+    partitions: null,
+    type: 'const',
+    possible_keys: 'PRIMARY',
+    key: 'PRIMARY',
+    key_len: '4',
+    ref: 'const',
+    rows: 1,
+    filtered: 100,
+    Extra: null,
+}];
 
 vi.mock('../../src/db/index.js', () => {
     const mockPool = {
@@ -9,7 +25,10 @@ vi.mock('../../src/db/index.js', () => {
             _connectionQueue: [],
         },
     };
-    return { pool: mockPool };
+    return {
+        pool: mockPool,
+        executeExplainQuery: vi.fn().mockResolvedValue(explainRows),
+    };
 });
 
 vi.mock('../../src/utils/rateLimiter.js', () => ({
@@ -40,18 +59,20 @@ describe('Ping structuredContent', () => {
 });
 
 describe('ExplainQuery structuredContent', () => {
-    it('should return structuredContent with rows', async () => {
-        const { pool } = await import('../../src/db/index.js');
-        (pool.query as any).mockResolvedValueOnce([[
-            { id: 1, select_type: 'SIMPLE', table: 'orders', type: 'ALL', rows: 100 },
-        ]]);
+    it('should accept MySQL 8 EXPLAIN columns in outputSchema', async () => {
+        const { explainOutputSchema } = await import('../../src/tools/explainQuery');
+        const schema = z.object(explainOutputSchema);
+        expect(() => schema.parse({ rows: explainRows })).not.toThrow();
+    });
 
+    it('should return structuredContent with rows', async () => {
         const { handleExplainQuery } = await import('../../src/tools/explainQuery');
-        const result = await handleExplainQuery({ sql: 'SELECT * FROM orders' });
+        const result = await handleExplainQuery({ sql: 'SELECT * FROM orders WHERE id = 1' });
 
         expect(result.structuredContent).toBeDefined();
         const sc = result.structuredContent as any;
         expect(sc.rows).toHaveLength(1);
-        expect(sc.rows[0].table).toBe('orders');
+        expect(sc.rows[0].table).toBe('customers');
+        expect(sc.rows[0].filtered).toBe(100);
     });
 });

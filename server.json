@@ -48,8 +48,20 @@
           "format": "string"
         },
         {
+          "name": "MCP_EXPLAIN_MAX_SCAN_ROWS",
+          "description": "EXPLAIN guardrail: max estimated rows for unindexed full table scans before blocking (defaults to 1000). MCP_SAFE_QUERY_MAX_ROWS is a deprecated alias.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "MCP_QUERY_ROW_LIMIT",
+          "description": "Max rows returned per SELECT; injected as LIMIT at the AST level (defaults to 500)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
           "name": "MCP_SAFE_QUERY_MAX_ROWS",
-          "description": "Threshold for EXPLAIN to block unindexed Full Table Scans (defaults to 1000)",
+          "description": "Deprecated alias for MCP_EXPLAIN_MAX_SCAN_ROWS",
           "isRequired": false,
           "format": "string"
         },
@@ -152,6 +164,18 @@
         {
           "name": "ALLOW_DDL_OPERATION",
           "description": "Enable Data Definition Language queries like CREATE, ALTER, DROP, RENAME (defaults to false)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "DB_SSL",
+          "description": "Enable TLS for the MySQL connection (defaults to false)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "DB_SSL_REJECT_UNAUTHORIZED",
+          "description": "Reject self-signed or untrusted TLS certificates when DB_SSL is true (defaults to true)",
           "isRequired": false,
           "format": "string"
         }

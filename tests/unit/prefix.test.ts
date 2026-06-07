@@ -1,20 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { deriveToolPrefix } from '../../src/utils/toolPrefix.js';
 
-function derivePrefix(): string {
-    let prefix = process.env.TOOL_PREFIX;
-    if (!prefix) {
-        const dbName = process.env.DB_NAME;
-        if (dbName) {
-            prefix = `${dbName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_`;
-        } else {
-            const randomStr = Math.random().toString(36).substring(2, 6);
-            prefix = `db_${randomStr}_`;
-        }
-    }
-    return prefix;
-}
-
-describe('Tool prefix derivation', () => {
+describe('deriveToolPrefix', () => {
     const originalEnv = { ...process.env };
 
     beforeEach(() => {
@@ -28,39 +15,38 @@ describe('Tool prefix derivation', () => {
 
     it('should use explicit TOOL_PREFIX when set', () => {
         process.env.TOOL_PREFIX = 'custom_';
-        expect(derivePrefix()).toBe('custom_');
+        expect(deriveToolPrefix()).toBe('custom_');
     });
 
     it('should derive prefix from DB_NAME when TOOL_PREFIX is not set', () => {
         process.env.DB_NAME = 'my_crm';
-        expect(derivePrefix()).toBe('my_crm_');
+        expect(deriveToolPrefix()).toBe('my_crm_');
     });
 
     it('should sanitize DB_NAME: lowercase and replace non-alphanumeric with underscore', () => {
         process.env.DB_NAME = 'CRM-Production';
-        expect(derivePrefix()).toBe('crm_production_');
+        expect(deriveToolPrefix()).toBe('crm_production_');
     });
 
     it('should sanitize DB_NAME with dots and spaces', () => {
         process.env.DB_NAME = 'my.db name';
-        expect(derivePrefix()).toBe('my_db_name_');
+        expect(deriveToolPrefix()).toBe('my_db_name_');
     });
 
     it('should prefer TOOL_PREFIX over DB_NAME', () => {
         process.env.TOOL_PREFIX = 'override_';
         process.env.DB_NAME = 'ignored_db';
-        expect(derivePrefix()).toBe('override_');
+        expect(deriveToolPrefix()).toBe('override_');
     });
 
     it('should generate random prefix when neither TOOL_PREFIX nor DB_NAME are set', () => {
-        const prefix = derivePrefix();
-        expect(prefix).toMatch(/^db_[a-z0-9]{4}_$/);
+        const prefix = deriveToolPrefix('abcd');
+        expect(prefix).toBe('db_abcd_');
     });
 
-    it('should generate different random prefixes on each call', () => {
-        const a = derivePrefix();
-        const b = derivePrefix();
-        // Very unlikely to collide
+    it('should generate different random prefixes when no suffix is provided', () => {
+        const a = deriveToolPrefix();
+        const b = deriveToolPrefix();
         expect(a === b).toBe(false);
     });
 });

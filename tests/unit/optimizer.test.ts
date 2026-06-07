@@ -48,4 +48,20 @@ describe('Safe-Query Optimizer - AST Parser', () => {
         expect(result.sql).toBe(sql); 
         expect(result.astType).toBe('show');
     });
+
+    it('should respect MCP_QUERY_ROW_LIMIT when injecting LIMIT', () => {
+        const original = process.env.MCP_QUERY_ROW_LIMIT;
+        process.env.MCP_QUERY_ROW_LIMIT = '1000';
+
+        try {
+            const { sql: optimized } = injectLimitAst('SELECT * FROM users');
+            expect(optimized.toUpperCase()).toContain('LIMIT 1000');
+        } finally {
+            if (original) {
+                process.env.MCP_QUERY_ROW_LIMIT = original;
+            } else {
+                delete process.env.MCP_QUERY_ROW_LIMIT;
+            }
+        }
+    });
 });

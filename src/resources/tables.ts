@@ -2,6 +2,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { SubscribeRequestSchema, UnsubscribeRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { schemaGraph, getTableDDL } from "../db/schema.js";
 import { getTableSemantics } from "../db/metadata.js";
+import { completeTableNames } from "../utils/tableCompletions.js";
 import { log } from "../utils/logger.js";
 
 const subscribedUris = new Set<string>();
@@ -11,7 +12,6 @@ export function getSubscribedUris(): ReadonlySet<string> {
 }
 
 export function registerTableResources(server: McpServer) {
-    // List all available tables
     server.resource(
         "schema",
         "mysql://schema",
@@ -35,10 +35,14 @@ export function registerTableResources(server: McpServer) {
         }
     );
 
-    // DDL for a specific table
     server.resource(
         "table",
-        new ResourceTemplate("mysql://tables/{name}", { list: undefined }),
+        new ResourceTemplate("mysql://tables/{name}", {
+            list: undefined,
+            complete: {
+                name: (value) => completeTableNames(value),
+            },
+        }),
         { description: "Exposes the SQL DDL and semantic dictionary of a specific table" },
         async (uri, { name }) => {
             const tableName = typeof name === 'string' ? name : String(name);
@@ -55,11 +59,10 @@ export function registerTableResources(server: McpServer) {
 
             let output = `-- === TABLE: ${tableName} ===\n${ddl};\n`;
 
-            // Append Semantics if available
             const semantics = getTableSemantics(tableName);
             if (Object.keys(semantics).length > 0) {
                 output += `\n/* SEMANTIC DICTIONARY:\n`;
-                output += JSON.stringify(semantics, null, 2);
+                output += JSON.stringify(semantics);
                 output += `\n*/\n`;
             }
 
@@ -72,7 +75,6 @@ export function registerTableResources(server: McpServer) {
         }
     );
 
-    // Handle resource subscriptions
     server.server.setRequestHandler(SubscribeRequestSchema, async (request) => {
         const uri = request.params.uri;
         subscribedUris.add(uri);

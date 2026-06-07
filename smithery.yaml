@@ -30,11 +30,21 @@ configSchema:
       type: "string"
       title: "Database Name"
       description: "MySQL Database name"
+    MCP_EXPLAIN_MAX_SCAN_ROWS:
+      type: "integer"
+      title: "EXPLAIN Max Scan Rows"
+      default: 1000
+      description: "EXPLAIN guardrail: max estimated rows for unindexed full table scans before blocking."
+    MCP_QUERY_ROW_LIMIT:
+      type: "integer"
+      title: "Query Row Limit"
+      default: 500
+      description: "Max rows returned per SELECT (AST-injected LIMIT)."
     MCP_SAFE_QUERY_MAX_ROWS:
       type: "integer"
-      title: "Max Rows"
+      title: "Max Scan Rows (deprecated)"
       default: 1000
-      description: "Threshold for EXPLAIN to block unindexed Full Table Scans."
+      description: "Deprecated alias for MCP_EXPLAIN_MAX_SCAN_ROWS."
     MCP_SAFE_QUERY_ENABLE_BLOCKING:
       type: "boolean"
       title: "Enable Blocking"
@@ -127,6 +137,8 @@ commandFunction: |-
     if (config.DB_USER !== undefined) env.DB_USER = config.DB_USER;
     if (config.DB_PASSWORD !== undefined) env.DB_PASSWORD = config.DB_PASSWORD;
     if (config.DB_NAME !== undefined) env.DB_NAME = config.DB_NAME;
+    if (config.MCP_EXPLAIN_MAX_SCAN_ROWS !== undefined) env.MCP_EXPLAIN_MAX_SCAN_ROWS = config.MCP_EXPLAIN_MAX_SCAN_ROWS.toString();
+    if (config.MCP_QUERY_ROW_LIMIT !== undefined) env.MCP_QUERY_ROW_LIMIT = config.MCP_QUERY_ROW_LIMIT.toString();
     if (config.MCP_SAFE_QUERY_MAX_ROWS !== undefined) env.MCP_SAFE_QUERY_MAX_ROWS = config.MCP_SAFE_QUERY_MAX_ROWS.toString();
     if (config.MCP_SAFE_QUERY_ENABLE_BLOCKING !== undefined) env.MCP_SAFE_QUERY_ENABLE_BLOCKING = config.MCP_SAFE_QUERY_ENABLE_BLOCKING.toString();
     if (config.MCP_METADATA_PATH !== undefined) env.MCP_METADATA_PATH = config.MCP_METADATA_PATH;
@@ -159,7 +171,8 @@ exampleConfig:
   DB_USER: "root"
   DB_PASSWORD: "password"
   DB_NAME: "test_db"
-  MCP_SAFE_QUERY_MAX_ROWS: 1000
+  MCP_EXPLAIN_MAX_SCAN_ROWS: 1000
+  MCP_QUERY_ROW_LIMIT: 500
   MCP_SAFE_QUERY_ENABLE_BLOCKING: true
   ALLOW_INSERT_OPERATION: false
   ALLOW_UPDATE_OPERATION: false

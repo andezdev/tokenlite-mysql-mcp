@@ -56,4 +56,10 @@ describe('jsonToCsv Formatter', () => {
         expect(lines[1]).toBe('1,∅');
         expect(lines[2]).toBe('2,NULL');
     });
+
+    it('should append a truncation footer when results are truncated', () => {
+        const data = Array.from({ length: 3 }, (_, i) => ({ id: i + 1 }));
+        const csv = jsonToCsv(data, { truncated: true, limit: 3 });
+        expect(csv).toContain('-- rows: 3 (truncated at LIMIT 3)');
+    });
 });

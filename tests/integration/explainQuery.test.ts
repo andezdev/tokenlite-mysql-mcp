@@ -28,7 +28,19 @@ describe('Explain Query Tool', () => {
     it('should return error for invalid SQL', async () => {
         const result = await handleExplainQuery({ sql: 'NOT VALID SQL' });
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('EXPLAIN Error');
+        expect(result.content[0].text).toMatch(/EXPLAIN Error|SQL Syntax Error|Unsupported Feature/);
+    });
+
+    it('should block ANALYZE statements', async () => {
+        const result = await handleExplainQuery({ sql: 'ANALYZE SELECT * FROM customers WHERE id = 1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('ANALYZE is not allowed');
+    });
+
+    it('should block non-SELECT statements', async () => {
+        const result = await handleExplainQuery({ sql: 'DELETE FROM customers WHERE id = 1' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Only SELECT queries can be explained');
     });
 
     it('should work regardless of write permission flags', async () => {

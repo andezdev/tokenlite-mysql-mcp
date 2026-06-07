@@ -14,7 +14,8 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 3. **Session-Level Defense in Depth**: If the server is configured in strict Read-Only mode (all write variables disabled), TokenLite injects `SET SESSION TRANSACTION READ ONLY` directly into the connection pool sockets. This guarantees that even if a theoretical bypass exists in the AST parser, the MySQL engine itself will physically reject any data modification.
 4. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
 5. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
-6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown with unambiguous NULL representation (`∅`), saving up to 50% of Output Tokens compared to verbose JSON.
+6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown with unambiguous NULL representation (`∅`), saving up to 50% of Output Tokens compared to verbose JSON. When results hit the applied `LIMIT`, a `-- rows: N (truncated at LIMIT X)` footer is appended so the LLM does not assume a complete dataset.
+7. **MCP Completions**: Table names and template keywords support the official `completions/complete` capability for resource templates (`mysql://tables/{name}`) and the `query_templates` prompt.
 
 ---
 
@@ -50,7 +51,8 @@ Edit your `claude_desktop_config.json` (usually located at `%APPDATA%\Claude\cla
         "DB_USER": "your_db_user",
         "DB_PASSWORD": "your_password",
         "DB_NAME": "your_database",
-        "MCP_SAFE_QUERY_MAX_ROWS": "1000",
+        "MCP_EXPLAIN_MAX_SCAN_ROWS": "1000",
+        "MCP_QUERY_ROW_LIMIT": "500",
         "MCP_SAFE_QUERY_ENABLE_BLOCKING": "true"
       }
     }
@@ -89,6 +91,22 @@ To use within Cursor IDE:
 
 ## ⚙️ Environment Variables Reference
 
+### Understanding Query Limits (two independent knobs)
+
+`execute_safe_query` applies **two separate limits**. Do not confuse them:
+
+| Variable | What it controls | Default | Example |
+|----------|------------------|---------|---------|
+| `MCP_EXPLAIN_MAX_SCAN_ROWS` | **Security gate**: blocks queries whose EXPLAIN plan shows a full table scan (`type: ALL`) with more estimated rows than this threshold. The query is rejected *before* execution. | `1000` | `5000` allows scanning tables up to ~5000 rows without an index |
+| `MCP_QUERY_ROW_LIMIT` | **Result cap**: max rows returned to the LLM. Injected as `LIMIT` at the AST level. When reached, CSV includes `-- rows: N (truncated at LIMIT X)`. | `500` | `1000` returns up to 1000 rows per SELECT |
+
+**Deprecated alias:** `MCP_SAFE_QUERY_MAX_ROWS` still works as a fallback for `MCP_EXPLAIN_MAX_SCAN_ROWS` only. It does **not** control the result `LIMIT`.
+
+**Worked example** with `MCP_EXPLAIN_MAX_SCAN_ROWS=5000` and `MCP_QUERY_ROW_LIMIT=500` on a `customers` table (~1502 rows):
+
+1. `SELECT * FROM customers` → passes EXPLAIN (1502 < 5000), executes with `LIMIT 500`, returns 500 rows + truncation footer.
+2. Same config but table has 8000 rows → blocked by EXPLAIN before execution.
+
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `DB_HOST` | MySQL Host address | `localhost` | No |
@@ -96,7 +114,8 @@ To use within Cursor IDE:
 | `DB_USER` | MySQL Username | `root` | No |
 | `DB_PASSWORD` | MySQL Password | `''` | No |
 | `DB_NAME` | MySQL Database name | `test` | Yes |
-| `MCP_SAFE_QUERY_MAX_ROWS` | Threshold for EXPLAIN to block unindexed Full Table Scans. | `1000` | No |
+| `MCP_EXPLAIN_MAX_SCAN_ROWS` | EXPLAIN guardrail: max estimated rows for unindexed full table scans before blocking. | `1000` | No |
+| `MCP_QUERY_ROW_LIMIT` | Max rows returned per SELECT (AST-injected `LIMIT` + truncation footer). | `500` | No |
 | `MCP_SAFE_QUERY_ENABLE_BLOCKING`| Enable or disable the EXPLAIN guardrail. | `true` | No |
 | `MCP_METADATA_PATH` | Absolute path to your custom `metadata.json` dictionary. | (Disabled) | No |
 | `MCP_TEMPLATES_PATH` | Absolute path to your custom `templates.json` queries. | (Disabled) | No |
@@ -114,6 +133,8 @@ To use within Cursor IDE:
 | `ALLOW_UPDATE_OPERATION` | Enable `UPDATE` queries. | `false` | No |
 | `ALLOW_DELETE_OPERATION` | Enable `DELETE` and `TRUNCATE` queries. | `false` | No |
 | `ALLOW_DDL_OPERATION` | Enable Data Definition Language (`CREATE`, `ALTER`, `DROP`, `RENAME`). | `false` | No |
+| `DB_SSL` | Enable TLS for the MySQL connection (recommended for managed/cloud databases). | `false` | No |
+| `DB_SSL_REJECT_UNAUTHORIZED` | Reject self-signed or untrusted TLS certificates when `DB_SSL=true`. | `true` | No |
 
 ---
 
@@ -184,7 +205,7 @@ Standard MCP servers dump the entire schema to the LLM. For large databases, thi
 Savings scale with the number of tables: the more tables in the database, the higher the savings because the standard pattern dumps all of them while TokenLite only fetches the target + 1-hop relationships.
 
 ### 2. Query Result Payloads (Output Tokens)
-TokenLite converts raw database rows to a dense, structured CSV layout. This avoids JSON syntax overhead (brackets, braces, repeated keys) and compresses the output payload returned to the LLM.
+TokenLite converts raw database rows to a dense, structured CSV layout. This avoids JSON syntax overhead (brackets, braces, repeated keys) and compresses the output payload returned to the LLM. When the row count reaches the server-injected `LIMIT`, results include a truncation footer (e.g. `-- rows: 500 (truncated at LIMIT 500)`) so agents know more data may exist.
 
 **Mock data** (varied: NULLs, long descriptions, mixed lengths):
 
@@ -242,7 +263,7 @@ Instead, wrap the process using standard open-source MCP proxies like [mcp-proxy
 
 **Error: `OptimizerError: Full table scan detected...`**
 The LLM attempted to execute a query that requires scanning thousands of rows without using an index. 
-*Solution*: Use `explain_query` to see the full EXPLAIN output and understand why the query was blocked. Rewrite the query with an indexed `WHERE` clause. If you truly need to scan the whole table, increase `MCP_SAFE_QUERY_MAX_ROWS` in your config.
+*Solution*: Use `explain_query` to see the full EXPLAIN output and understand why the query was blocked. Rewrite the query with an indexed `WHERE` clause. If you truly need to scan the whole table, increase `MCP_EXPLAIN_MAX_SCAN_ROWS` in your config. To return more rows per query, adjust `MCP_QUERY_ROW_LIMIT` separately.
 
 **Error: `calling "initialize": invalid character...`**
 This means the MCP JSON-RPC protocol crashed. Ensure you are passing the correct DB credentials and that the database is running and accessible from the machine where the MCP server runs.

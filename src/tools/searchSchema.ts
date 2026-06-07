@@ -1,9 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import Fuse from "fuse.js";
-import { pool } from "../db/index.js";
 import { schemaGraph, getTableDDL } from "../db/schema.js";
-import { getTableSemantics } from "../db/metadata.js";
+import { getTableSemantics, hasTemplatesLoaded } from "../db/metadata.js";
 import { checkRateLimit } from "../utils/rateLimiter.js";
 
 
@@ -79,7 +78,7 @@ export async function handleSearchSchema({ query }: { query: string }) {
             const semantics = getTableSemantics(tableName);
             if (Object.keys(semantics).length > 0) {
                 tableStr += `/* SEMANTIC DICTIONARY:\n`;
-                tableStr += JSON.stringify(semantics, null, 2);
+                tableStr += JSON.stringify(semantics);
                 tableStr += `\n*/\n`;
             }
             
@@ -93,7 +92,9 @@ export async function handleSearchSchema({ query }: { query: string }) {
         output += "\n-- === HEURISTIC GRAPH HINTS ===\n" + inferredHints.join("\n");
     }
 
-    output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */";
+    if (hasTemplatesLoaded()) {
+        output += "\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */";
+    }
 
     return {
         content: [{ type: "text" as const, text: output, annotations: SEARCH_SCHEMA_CONTENT_ANNOTATIONS }]
@@ -104,7 +105,7 @@ export function registerSearchSchemaTool(server: McpServer, prefix: string = "")
     server.registerTool(
         `${prefix}search_schema`,
         {
-            description: "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this tool FIRST to understand the database structure. Searches for a table and returns its exact SQL DDL, along with the DDL of its direct parent and child tables (Auto-Join Context). Do NOT use execute_safe_query for schema exploration.",
+            description: "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this FIRST before writing queries. Fuzzy-searches a table name and returns its DDL plus direct parent/child table DDLs (Auto-Join Context), inferred FK hints, and semantic dictionary entries from metadata.json when configured. If templates.json is loaded, reminds you to use the 'query_templates' prompt for business metrics. Do NOT use execute_safe_query for schema exploration.",
             inputSchema: {
                 query: z.string().max(200).describe("The name of the table or entity to search for (e.g. 'users', 'invoices')."),
             },

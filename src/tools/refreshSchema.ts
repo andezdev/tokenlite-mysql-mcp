@@ -8,7 +8,7 @@ export function registerRefreshSchemaTool(server: McpServer, prefix: string = ""
     server.registerTool(
         `${prefix}refresh_schema`,
         {
-            description: "Forces the MCP server to rebuild the internal Schema Graph. Use this if you suspect a DBA recently added a table, column, or foreign key and the search_schema or execute queries are failing.",
+            description: "Rebuilds the internal Schema Graph from the live database and notifies subscribed MCP resources. Use when search_schema or execute_safe_query fail with missing table/column errors after a schema change.",
             annotations: { readOnlyHint: true, idempotentHint: true },
         },
         async () => {

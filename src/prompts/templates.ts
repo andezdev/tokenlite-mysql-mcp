@@ -1,13 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { z } from "zod";
-import { searchTemplates } from "../db/metadata.js";
+import { getTemplateCompletionSuggestions, searchTemplates } from "../db/metadata.js";
 
 export function registerTemplatesPrompt(server: McpServer, prefix: string = "") {
     server.prompt(
         `${prefix}query_templates`,
-        "Official company SQL templates for business metrics. Use this as a starting point to avoid writing SQL from scratch.",
+        "Returns pre-approved SQL templates for business metrics (requires templates.json via MCP_TEMPLATES_PATH). Use before writing analytical SQL from scratch. Execute the returned SQL via execute_safe_query.",
         {
-            query: z.string().optional().describe("Keyword to search for in templates (e.g., 'revenue', 'ltv').")
+            query: completable(
+                z.string().optional().describe("Keyword to search for in templates (e.g., 'revenue', 'ltv')."),
+                (value) => getTemplateCompletionSuggestions(String(value ?? ""))
+            ),
         },
         ({ query }) => {
             const results = searchTemplates(query || "");

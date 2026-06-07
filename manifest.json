@@ -51,6 +51,8 @@
         "DB_USER": "${user_config.db_user}",
         "DB_PASSWORD": "${user_config.db_password}",
         "DB_NAME": "${user_config.db_name}",
+        "MCP_EXPLAIN_MAX_SCAN_ROWS": "${user_config.mcp_explain_max_scan_rows}",
+        "MCP_QUERY_ROW_LIMIT": "${user_config.mcp_query_row_limit}",
         "MCP_SAFE_QUERY_MAX_ROWS": "${user_config.mcp_safe_query_max_rows}",
         "MCP_SAFE_QUERY_ENABLE_BLOCKING": "${user_config.mcp_safe_query_enable_blocking}",
         "MCP_METADATA_PATH": "${user_config.mcp_metadata_path}",
@@ -59,7 +61,9 @@
         "ALLOW_INSERT_OPERATION": "${user_config.allow_insert_operation}",
         "ALLOW_UPDATE_OPERATION": "${user_config.allow_update_operation}",
         "ALLOW_DELETE_OPERATION": "${user_config.allow_delete_operation}",
-        "ALLOW_DDL_OPERATION": "${user_config.allow_ddl_operation}"
+        "ALLOW_DDL_OPERATION": "${user_config.allow_ddl_operation}",
+        "DB_SSL": "${user_config.db_ssl}",
+        "DB_SSL_REJECT_UNAUTHORIZED": "${user_config.db_ssl_reject_unauthorized}"
       }
     }
   },
@@ -99,10 +103,24 @@
       "description": "MySQL Database name",
       "required": true
     },
+    "mcp_explain_max_scan_rows": {
+      "type": "number",
+      "title": "EXPLAIN Max Scan Rows",
+      "description": "EXPLAIN guardrail: max estimated rows for unindexed full table scans before blocking the query.",
+      "default": 1000,
+      "required": false
+    },
+    "mcp_query_row_limit": {
+      "type": "number",
+      "title": "Query Row Limit",
+      "description": "Max rows returned per SELECT (AST-injected LIMIT and truncation footer).",
+      "default": 500,
+      "required": false
+    },
     "mcp_safe_query_max_rows": {
       "type": "number",
-      "title": "Max Scan Rows",
-      "description": "Threshold for EXPLAIN to block unindexed Full Table Scans.",
+      "title": "Max Scan Rows (deprecated)",
+      "description": "Deprecated alias for mcp_explain_max_scan_rows.",
       "default": 1000,
       "required": false
     },
@@ -158,6 +176,20 @@
       "title": "Allow DDL Queries",
       "description": "Enable Data Definition Language like CREATE, ALTER, DROP, RENAME (default is false).",
       "default": false,
+      "required": false
+    },
+    "db_ssl": {
+      "type": "boolean",
+      "title": "Enable TLS",
+      "description": "Enable TLS for the MySQL connection (recommended for managed/cloud databases).",
+      "default": false,
+      "required": false
+    },
+    "db_ssl_reject_unauthorized": {
+      "type": "boolean",
+      "title": "Reject Unauthorized TLS Certificates",
+      "description": "Reject self-signed or untrusted TLS certificates when DB_SSL is enabled.",
+      "default": true,
       "required": false
     }
   }

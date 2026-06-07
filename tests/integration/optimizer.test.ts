@@ -3,15 +3,14 @@ import { analyzeQueryPlan, OptimizerError, getIndexHint } from '../../src/db/opt
 import { pool } from '../../src/db/index.js';
 
 describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
-    const originalMaxRows = process.env.MCP_SAFE_QUERY_MAX_ROWS;
+    const originalMaxRows = process.env.MCP_EXPLAIN_MAX_SCAN_ROWS;
 
     beforeAll(() => {
-        // Lower the threshold to 1 row to trigger blocks because InnoDB estimates 3 rows
-        process.env.MCP_SAFE_QUERY_MAX_ROWS = '1';
+        process.env.MCP_EXPLAIN_MAX_SCAN_ROWS = '1';
     });
 
     afterAll(async () => {
-        process.env.MCP_SAFE_QUERY_MAX_ROWS = originalMaxRows;
+        process.env.MCP_EXPLAIN_MAX_SCAN_ROWS = originalMaxRows;
         await pool.end();
     });
 
@@ -32,7 +31,7 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
     });
 
     it('should include index hint in the error when full table scan is blocked', async () => {
-        const sql = "SELECT * FROM orders WHERE status = 'shipped'";
+        const sql = 'SELECT * FROM customers';
 
         try {
             await analyzeQueryPlan(sql, pool);
@@ -40,7 +39,7 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
         } catch (e: any) {
             expect(e).toBeInstanceOf(OptimizerError);
             expect(e.message).toContain('Available indexes');
-            expect(e.message).toContain('idx_customer_id');
+            expect(e.message).toContain('email');
         }
     });
 
@@ -54,7 +53,7 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
     it('should allow queries that scan fewer rows than the threshold', async () => {
         // Suppose we have a small table (e.g. categories might only have 2 rows)
         // Wait, orders only has 2 rows... let's temporarily set threshold to 2000
-        process.env.MCP_SAFE_QUERY_MAX_ROWS = '2000';
+        process.env.MCP_EXPLAIN_MAX_SCAN_ROWS = '2000';
         
         const sql = "SELECT * FROM orders";
         
@@ -62,6 +61,6 @@ describe('Safe-Query Optimizer - EXPLAIN Analysis', () => {
         await expect(analyzeQueryPlan(sql, pool)).resolves.toBeUndefined();
         
         // Revert threshold back
-        process.env.MCP_SAFE_QUERY_MAX_ROWS = '2';
+        process.env.MCP_EXPLAIN_MAX_SCAN_ROWS = '1';
     });
 });

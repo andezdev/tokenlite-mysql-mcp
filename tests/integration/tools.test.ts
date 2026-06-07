@@ -30,7 +30,7 @@ describe('MCP Tools Integration & Risk Mitigations', () => {
         expect(result.isError).toBe(true);
         const content = result.content[0].text as string;
         
-        expect(content).toContain('Query Analysis Error');
         expect(content).toContain('refresh_schema');
+        expect(content).not.toMatch(/ER_BAD_FIELD_ERROR|at\s+[\w./\\-]+:\d+/);
     });
 });

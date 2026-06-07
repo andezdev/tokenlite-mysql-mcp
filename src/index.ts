@@ -12,6 +12,8 @@ import { buildSchemaGraph } from "./db/schema.js";
 import { initMetadata } from "./db/metadata.js";
 import { closePool } from "./db/index.js";
 import { initLogger, log } from "./utils/logger.js";
+import { getPackageVersion } from "./utils/version.js";
+import { deriveToolPrefix } from "./utils/toolPrefix.js";
 import dotenv from "dotenv";
 
 dotenv.config({ quiet: true });
@@ -19,10 +21,11 @@ dotenv.config({ quiet: true });
 async function main() {
     const server = new McpServer({
         name: "tokenlite-mysql-mcp",
-        version: "1.0.0",
+        version: getPackageVersion(),
     }, {
         capabilities: {
             logging: {},
+            completions: {},
             resources: {
                 subscribe: true,
                 listChanged: true,
@@ -32,29 +35,16 @@ async function main() {
 
     initLogger(server);
 
-    // Build Semantic Graph on startup
     try {
         await buildSchemaGraph();
     } catch (e) {
         log("warning", `Failed to build schema graph on startup: ${e instanceof Error ? e.message : String(e)}. The server will start in degraded mode.`);
     }
     
-    // Load Metadata and Templates
     initMetadata();
 
-    // Derive tool prefix: explicit TOOL_PREFIX > DB_NAME > fallback random
-    let prefix = process.env.TOOL_PREFIX;
-    if (!prefix) {
-        const dbName = process.env.DB_NAME;
-        if (dbName) {
-            prefix = `${dbName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_`;
-        } else {
-            const randomStr = Math.random().toString(36).substring(2, 6);
-            prefix = `db_${randomStr}_`;
-        }
-    }
+    const prefix = deriveToolPrefix();
 
-    // Register MCP tools & prompts & resources
     registerSearchSchemaTool(server, prefix);
     registerExecuteQueryTool(server, prefix);
     registerRefreshSchemaTool(server, prefix);

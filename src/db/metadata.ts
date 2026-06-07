@@ -78,6 +78,30 @@ export function getCustomRelationships(): Map<string, string> {
 /**
  * Performs a fuzzy search on the loaded templates.
  */
+export function hasTemplatesLoaded(): boolean {
+    return templatesCache.length > 0;
+}
+
+export function getTemplateCompletionSuggestions(value: string): string[] {
+    if (!hasTemplatesLoaded()) {
+        return [];
+    }
+
+    const needle = value.trim().toLowerCase();
+    const suggestions = new Set<string>();
+
+    for (const template of templatesCache) {
+        if (!needle || template.name.toLowerCase().includes(needle)) {
+            suggestions.add(template.name);
+        }
+        if (!needle || template.description.toLowerCase().includes(needle)) {
+            suggestions.add(template.description.split(' ')[0].toLowerCase());
+        }
+    }
+
+    return Array.from(suggestions).slice(0, 20);
+}
+
 export function searchTemplates(query: string): QueryTemplate[] {
     if (!templateSearcher) return [];
     

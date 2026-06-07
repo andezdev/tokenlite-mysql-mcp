@@ -14,26 +14,39 @@ TokenLite MCP is designed with a **Defense in Depth** strategy to guarantee abso
    The `execute_safe_query` tool passes every LLM query through `node-sql-parser`. It forcefully injects a `LIMIT 500` (or whatever limit is configured) directly into the Abstract Syntax Tree, making it mathematically impossible for the LLM to request a massive payload that crashes the node process.
 
 2. **Layer 2: The EXPLAIN Guardrail**
-   Before executing the query, the server runs an `EXPLAIN` plan on MySQL. If the optimizer detects that the query requires a Full Table Scan on a table with more rows than `MCP_SAFE_QUERY_MAX_ROWS`, the query is hard-blocked and the LLM is instructed to use an index.
+   Before executing the query, the server runs an `EXPLAIN` plan on MySQL. If the optimizer detects that the query requires a Full Table Scan on a table with more estimated rows than `MCP_EXPLAIN_MAX_SCAN_ROWS` (default 1000), the query is hard-blocked and the LLM is instructed to use an index. This threshold is independent of `MCP_QUERY_ROW_LIMIT`, which caps how many rows are returned.
 
-3. **Layer 3: Database User Permissions (Engine Level)**
+3. **Layer 3: Hardened `explain_query`**
+   The `explain_query` tool validates SQL through the same AST pipeline as `execute_safe_query`. Only `SELECT` statements are allowed. `ANALYZE` (which executes the query in MySQL 8) and non-SELECT statements are blocked. All EXPLAIN calls are subject to `MYSQL_QUERY_TIMEOUT`.
+
+4. **Layer 4: Write Scope Guardrail**
+   When write operations are enabled (`ALLOW_UPDATE_OPERATION`, `ALLOW_DELETE_OPERATION`), `UPDATE` and `DELETE` statements without a `WHERE` clause are rejected to prevent accidental mass modifications.
+
+5. **Layer 5: Database User Permissions (Engine Level)**
    To protect against Tool Bypass, TokenLite strongly mandates connecting to the database using a restricted, read-only user. As seen in our `docker/init.sql` setup:
    ```sql
    GRANT SELECT, SHOW VIEW ON your_database.* TO 'mcp_user'@'%';
    ```
    If the LLM attempts to circumvent the MCP by executing raw terminal commands, the MySQL engine itself will immediately block the destructive action with an `ERROR 1142 (42000): DELETE command denied` message.
 
-3. **Layer 3: Environment Isolation**
+6. **Layer 6: Environment Isolation**
    In a production setup, the database credentials (`DB_PASSWORD`) should be loaded in the environment of the MCP process internally, without explicitly printing them in the prompt. If the LLM never sees the password, it cannot build the raw terminal command to attempt a bypass.
 
-4. **Layer 4: Rate Limiting**
+7. **Layer 7: Rate Limiting**
    A sliding-window rate limiter restricts tool invocations to `MCP_RATE_LIMIT_RPM` requests per minute (default: 60). This prevents aggressive agents from overwhelming the database with high-frequency requests. Set to `0` to disable.
 
-5. **Layer 5: Input Validation**
+8. **Layer 8: Input Validation**
    All tool inputs are validated with strict bounds:
    - `execute_safe_query`: SQL limited to **10,000 characters** max.
    - `search_schema`: search query limited to **200 characters** max.
    - Table names are sanitized against `^[a-zA-Z0-9_]+$` before use in any dynamic SQL (`SHOW CREATE TABLE`). Names with spaces, backticks, semicolons, dots, dashes, or unicode are rejected.
+
+9. **Layer 9: Connection Hardening**
+   - `multipleStatements: false` is enforced at the pool level to block stacked queries even if the AST parser is bypassed.
+   - Optional TLS via `DB_SSL=true` for encrypted connections to managed MySQL instances.
+
+10. **Layer 10: Sanitized Error Responses**
+    Database errors returned to the LLM are sanitized to avoid leaking internal paths, raw MySQL error codes, or stack traces. Actionable hints (e.g. `refresh_schema`, timeout guidance) are preserved.
 
 ### Recommendation
 If you notice the LLM trying to bypass the MCP, you can add a system prompt instruction to your agent's configuration:
