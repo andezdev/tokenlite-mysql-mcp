@@ -50,24 +50,24 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "dotenv": "^16.4.7",
     "fuse.js": "^7.4.0",
-    "mysql2": "^3.12.0",
+    "mysql2": "^3.24.6",
     "node-sql-parser": "^5.4.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@types/node": "^22.10.1",
     "@types/node-sql-parser": "^1.0.0",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.12",
     "husky": "^9.1.7",
     "js-tiktoken": "^1.0.21",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.12"
   }
 }
