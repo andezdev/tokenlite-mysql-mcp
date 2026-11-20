@@ -63,10 +63,14 @@ describe('Database Integration - Security & Limits', () => {
 
     it('should throw a timeout error when a query exceeds MYSQL_QUERY_TIMEOUT', async () => {
         const originalTimeout = process.env.MYSQL_QUERY_TIMEOUT;
+        const originalBlocking = process.env.MCP_SAFE_QUERY_ENABLE_BLOCKING;
         process.env.MYSQL_QUERY_TIMEOUT = '100';
+        // SLEEP() is rejected by the SQL policy, so use a deliberately heavy cross join instead
+        // (with the EXPLAIN gate disabled so it reaches the server).
+        process.env.MCP_SAFE_QUERY_ENABLE_BLOCKING = 'false';
 
         try {
-            await executeSafeQuery('SELECT SLEEP(0.5)');
+            await executeSafeQuery("SELECT COUNT(*) FROM customers a, customers b, customers c WHERE CONCAT(a.name, b.email) <> c.email");
             expect.unreachable('should have timed out');
         } catch (error: any) {
             expect(error.code).toBe('PROTOCOL_SEQUENCE_TIMEOUT');
@@ -74,6 +78,8 @@ describe('Database Integration - Security & Limits', () => {
         } finally {
             if (originalTimeout) process.env.MYSQL_QUERY_TIMEOUT = originalTimeout;
             else delete process.env.MYSQL_QUERY_TIMEOUT;
+            if (originalBlocking) process.env.MCP_SAFE_QUERY_ENABLE_BLOCKING = originalBlocking;
+            else delete process.env.MCP_SAFE_QUERY_ENABLE_BLOCKING;
         }
     });
 });

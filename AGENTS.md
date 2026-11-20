@@ -10,11 +10,13 @@
 ## 🚨 Golden Rules
 
 1. **NEVER use `SHOW TABLES` or `DESCRIBE` manually.**
-   - **Rule**: You MUST use the `search_schema` tool instead. 
+   - **Rule**: You MUST use the `search_schema` tool instead. SHOW statements are rejected by the server unless the operator sets `MCP_ALLOW_SHOW=true`.
    - **Why**: `search_schema` provides a compressed, heuristic-based Graph (Auto-Join Context) that gives you the DDL of the requested table *and* its implicitly related tables. It also injects business semantics from `metadata.json`.
 
 2. **NEVER manually query `information_schema`.**
    - **Rule**: If a query fails because of a missing column or table (e.g., `ER_BAD_FIELD_ERROR`), you MUST use the `refresh_schema` tool to rebuild the internal graph, and then use `search_schema` again. Do not attempt to query `information_schema` directly.
+   - **Enforced**: The SQL policy rejects references to `information_schema`, `mysql`, `performance_schema`, `sys` and any schema other than the configured database (`MCP_ALLOWED_SCHEMAS`), as well as server variables (`@@x`, `@x`), `SELECT ... INTO`, locking reads, executable comments (`/*! */`) and functions such as `LOAD_FILE`, `SLEEP` or `USER()`. A rejected query returns `Security Error: ...`: do not try to rephrase it to get around the policy.
+   - **Views**: views appear in `search_schema` like tables. Their DDL lists only columns and types (the view definition is never exposed).
 
 3. **NEVER write business metrics SQL manually (when templates are configured).**
    - **Rule**: If `templates.json` is loaded, `search_schema` will include a reminder to use the `query_templates` prompt before writing analytical SQL (e.g., LTV, Revenue, Active Users).
