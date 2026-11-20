@@ -25,15 +25,17 @@ jobs:
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20.x
+      - name: Use Node.js 24.x
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
 
-      - name: Update npm to latest version
+      # Pinned to a major (not @latest) so a new npm release that drops support for the runner's
+      # Node version cannot break publishing. npm >= 11.5.1 is required for trusted publishing (OIDC).
+      - name: Update npm
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: npm install -g npm@latest
+        run: npm install -g npm@^11.5.1
 
       - name: Install dependencies
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
