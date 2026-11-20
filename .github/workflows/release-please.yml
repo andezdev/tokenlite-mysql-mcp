@@ -69,27 +69,18 @@ jobs:
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
         run: npm run build
 
+      # Idempotent: a manual re-run (workflow_dispatch) after a partial failure must not fail here
+      # because the version is already on npm.
       - name: Publish to NPM
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: npm publish --provenance --access public
-
-      - name: Install mcpb and Smithery CLI
-        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: npm install -g @anthropic-ai/mcpb @smithery/cli
-
-      - name: Prune devDependencies for Bundle
-        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: npm install --omit=dev --ignore-scripts
-
-      - name: Pack MCPB Bundle
-        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: mcpb pack .
-
-      - name: Publish Bundle to Smithery
-        if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
-        run: smithery mcp publish ./tokenlite-mysql-mcp.mcpb -n andezdev/tokenlite-mysql-mcp
-        env:
-          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published, skipping."
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Install mcp-publisher
         if: ${{ steps.release.outputs.release_created || github.event_name == 'workflow_dispatch' }}
