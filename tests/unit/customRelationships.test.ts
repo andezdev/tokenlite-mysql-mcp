@@ -8,11 +8,18 @@ describe('getCustomRelationships', () => {
     });
 
     async function loadWithMetadata(metadata: Record<string, any>) {
+        const FAKE_PATH = '/fake/metadata.json';
         const fs = await import('fs');
-        vi.spyOn(fs.default, 'existsSync').mockReturnValue(true);
-        vi.spyOn(fs.default, 'readFileSync').mockReturnValue(JSON.stringify(metadata));
+        // Only fake the metadata file: other reads (e.g. the module loader reading source files
+        // during the dynamic import below, as Node 24 does) must hit the real file system.
+        const realExistsSync = fs.default.existsSync;
+        const realReadFileSync = fs.default.readFileSync;
+        vi.spyOn(fs.default, 'existsSync').mockImplementation(((p: any) =>
+            p === FAKE_PATH ? true : realExistsSync(p)) as typeof fs.default.existsSync);
+        vi.spyOn(fs.default, 'readFileSync').mockImplementation(((p: any, ...rest: any[]) =>
+            p === FAKE_PATH ? JSON.stringify(metadata) : (realReadFileSync as any)(p, ...rest)) as typeof fs.default.readFileSync);
 
-        process.env.MCP_METADATA_PATH = '/fake/metadata.json';
+        process.env.MCP_METADATA_PATH = FAKE_PATH;
         const mod = await import('../../src/db/metadata.js');
         mod.initMetadata();
         return mod.getCustomRelationships();
