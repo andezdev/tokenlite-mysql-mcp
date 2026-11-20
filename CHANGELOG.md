@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v4.1.0...tokenlite-mysql-mcp-v5.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* SHOW statements, information_schema and any schema other than DB_NAME are now rejected by default. Set MCP_ALLOW_SHOW=true and/or MCP_ALLOWED_SCHEMAS to restore access.
+
+### Features
+
+* enforce a fail-closed SQL policy and support views ([#28](https://github.com/andezdev/tokenlite-mysql-mcp/issues/28)) ([4453701](https://github.com/andezdev/tokenlite-mysql-mcp/commit/4453701aa22198f5b2272d7b52431093618b9786))
+
+
+### Bug Fixes
+
+* **deps:** resolve npm audit vulnerabilities ([#29](https://github.com/andezdev/tokenlite-mysql-mcp/issues/29)) ([dc51087](https://github.com/andezdev/tokenlite-mysql-mcp/commit/dc51087d40cae05a6dc5cbfac82b8580904d7dca))
+
 ## [4.1.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v4.0.0...tokenlite-mysql-mcp-v4.1.0) (2026-06-07)
 
 
