@@ -20,6 +20,39 @@ export function invalidateDdlCache(): void {
 
 const SAFE_TABLE_NAME = /^[a-zA-Z0-9_]+$/;
 
+export function includeViews(): boolean {
+    return process.env.MCP_INCLUDE_VIEWS !== 'false';
+}
+
+function quoteComment(comment: string): string {
+    return `'${comment.replace(/\\/g, '\\\\').replace(/'/g, "''")}'`;
+}
+
+/**
+ * Builds a column-only DDL for a view from information_schema.columns.
+ *
+ * `SHOW CREATE VIEW` is deliberately not used: it requires the SHOW VIEW privilege and exposes the
+ * view definition (base schema, tables, columns and any masking expressions), which is exactly what
+ * a restricted, view-based deployment wants to hide from the model.
+ */
+export async function buildViewDDL(viewName: string): Promise<string | null> {
+    const [columns] = await pool.query<any[]>(
+        `SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_COMMENT
+         FROM information_schema.columns
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+         ORDER BY ORDINAL_POSITION`,
+        [getDbName(), viewName]
+    );
+    if (!columns || columns.length === 0) return null;
+
+    const lines = columns.map((c: any) => {
+        const nullable = c.IS_NULLABLE === 'NO' ? ' NOT NULL' : '';
+        const comment = c.COLUMN_COMMENT ? ` COMMENT ${quoteComment(c.COLUMN_COMMENT)}` : '';
+        return `  \`${c.COLUMN_NAME}\` ${c.COLUMN_TYPE}${nullable}${comment}`;
+    });
+    return `CREATE VIEW \`${viewName}\` (\n${lines.join(',\n')}\n) /* view: definition not exposed */`;
+}
+
 export async function getTableDDL(tableName: string): Promise<string | null> {
     if (!SAFE_TABLE_NAME.test(tableName)) {
         return null;
@@ -31,9 +64,15 @@ export async function getTableDDL(tableName: string): Promise<string | null> {
     }
 
     try {
+        if (schemaGraph.get(tableName)?.kind === 'view') {
+            const ddl = await buildViewDDL(tableName);
+            ddlCache.set(tableName, { ddl, expiresAt: Date.now() + DDL_CACHE_TTL_MS });
+            return ddl;
+        }
+
         const [rows] = await pool.query<any[]>(`SHOW CREATE TABLE \`${tableName}\``);
         const ddl = (rows && rows.length > 0)
-            ? (rows[0]['Create Table'] || rows[0]['Create View'])
+            ? (rows[0]['Create Table'] ?? null)
             : null;
 
         ddlCache.set(tableName, { ddl, expiresAt: Date.now() + DDL_CACHE_TTL_MS });
@@ -84,10 +123,11 @@ export async function buildSchemaGraph(): Promise<void> {
     const dbName = getDbName();
     const newGraph = new Map<string, TableNode>();
 
-    // Query 1: Fetch all tables
+    // Query 1: Fetch all tables (and views, unless MCP_INCLUDE_VIEWS=false)
+    const tableTypes = includeViews() ? ['BASE TABLE', 'VIEW'] : ['BASE TABLE'];
     const [tables] = await pool.query<any[]>(
-        `SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'`,
-        [dbName]
+        `SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.tables WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN (?)`,
+        [dbName, tableTypes]
     );
 
     const tableNames = new Set<string>();
@@ -95,6 +135,7 @@ export async function buildSchemaGraph(): Promise<void> {
         tableNames.add(row.TABLE_NAME);
         newGraph.set(row.TABLE_NAME, {
             name: row.TABLE_NAME,
+            kind: row.TABLE_TYPE === 'VIEW' ? 'view' : 'table',
             foreignKeys: []
         });
     }

@@ -178,3 +178,17 @@ ANALYZE TABLE orders;
 ANALYZE TABLE categories;
 ANALYZE TABLE tags;
 ANALYZE TABLE product_tags;
+
+-- 7. Views (masked projection) for view support tests
+CREATE SQL SECURITY DEFINER VIEW customers_public AS
+    SELECT id, name, CONCAT(LEFT(email, 2), '***') AS email_masked, tier
+    FROM customers;
+
+-- 8. View-only deployment: a schema that only contains views over mcp_test_db, and an account that can
+--    read those views and nothing else (no SHOW VIEW, no access to the base tables).
+CREATE DATABASE IF NOT EXISTS mcp_views;
+CREATE SQL SECURITY DEFINER VIEW mcp_views.customers_v AS
+    SELECT id, CONCAT(LEFT(email, 2), '***') AS email_masked, tier FROM mcp_test_db.customers;
+CREATE USER 'mcp_views_only'@'%' IDENTIFIED BY 'mcp_views_password';
+GRANT SELECT ON mcp_views.* TO 'mcp_views_only'@'%';
+FLUSH PRIVILEGES;

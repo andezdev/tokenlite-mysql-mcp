@@ -42,11 +42,22 @@ describe('Safe-Query Optimizer - AST Parser', () => {
         expect(() => injectLimitAst(sql)).toThrow(/Multiple statements/);
     });
 
-    it('should allow SHOW commands to pass through with astType show', () => {
-        const sql = 'SHOW CREATE TABLE users';
-        const result = injectLimitAst(sql);
-        expect(result.sql).toBe(sql); 
-        expect(result.astType).toBe('show');
+    it('should reject SHOW commands by default', () => {
+        expect(() => injectLimitAst('SHOW CREATE TABLE users')).toThrow(/SHOW statements are disabled/);
+    });
+
+    it('should allow SHOW commands to pass through with astType show when MCP_ALLOW_SHOW=true', () => {
+        const original = process.env.MCP_ALLOW_SHOW;
+        process.env.MCP_ALLOW_SHOW = 'true';
+        try {
+            const sql = 'SHOW CREATE TABLE users';
+            const result = injectLimitAst(sql);
+            expect(result.sql).toBe(sql);
+            expect(result.astType).toBe('show');
+        } finally {
+            if (original === undefined) delete process.env.MCP_ALLOW_SHOW;
+            else process.env.MCP_ALLOW_SHOW = original;
+        }
     });
 
     it('should respect MCP_QUERY_ROW_LIMIT when injecting LIMIT', () => {

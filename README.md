@@ -11,11 +11,12 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 
 1. **Safe-Query Optimizer (AST & EXPLAIN)**: Protects production databases by pre-analyzing queries. Blocks unindexed Full Table Scans that exceed configurable thresholds and injects strict `LIMIT` clauses automatically at the AST level.
 2. **Granular AST-Based Write Permissions**: By default, TokenLite is 100% Read-Only. You can surgically enable specific write operations (INSERT, UPDATE, DELETE, DDL) via environment variables. The firewall uses strict AST parsing to prevent SQL injection and comment-bypass attacks, and strictly prohibits privilege escalation commands (like `GRANT` or `CALL`).
-3. **Session-Level Defense in Depth**: If the server is configured in strict Read-Only mode (all write variables disabled), TokenLite injects `SET SESSION TRANSACTION READ ONLY` directly into the connection pool sockets. This guarantees that even if a theoretical bypass exists in the AST parser, the MySQL engine itself will physically reject any data modification.
-4. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
-5. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
-6. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown with unambiguous NULL representation (`∅`), saving up to 50% of Output Tokens compared to verbose JSON. When results hit the applied `LIMIT`, a `-- rows: N (truncated at LIMIT X)` footer is appended so the LLM does not assume a complete dataset.
-7. **MCP Completions**: Table names and template keywords support the official `completions/complete` capability for resource templates (`mysql://tables/{name}`) and the `query_templates` prompt.
+3. **SQL Policy (secure by default)**: Every statement is parsed and walked (including subqueries, CTEs and `UNION` branches) before it reaches MySQL. Rejected: other schemas and the system ones (`information_schema`, `mysql`, `performance_schema`, `sys`), `SHOW`, server/user variables, `SELECT ... INTO` (`OUTFILE`/`DUMPFILE`/variables), locking reads, executable comments (`/*! */`, `/*M! */`) and dangerous functions (`LOAD_FILE`, `SLEEP`, `BENCHMARK`, locks, `USER()`/`VERSION()`…). See [SQL Policy](#-sql-policy).
+4. **Session-Level Defense in Depth**: If the server is configured in strict Read-Only mode (all write variables disabled), TokenLite injects `SET SESSION TRANSACTION READ ONLY` directly into the connection pool sockets. This guarantees that even if a theoretical bypass exists in the AST parser, the MySQL engine itself will physically reject any data modification.
+5. **Business Intelligence Injection**: Bridges the gap between raw data and company logic. Automatically attaches semantic dictionaries (`metadata.json`) to database schema exploration, and exposes Semantic Templates via the official **MCP Prompts API** (`templates.json`) so the LLM uses pre-approved analytical queries instead of hallucinating them.
+6. **Graph-Based Semantic Schema**: Avoids sending giant schemas to the LLM that saturate the context window. When a table is searched, the engine uses heuristics to deduce implicit relationships and packages the exact "Auto-Join Context".
+7. **CSV Token Compression**: Database results are efficiently transformed into tabular CSV markdown with unambiguous NULL representation (`∅`), saving up to 50% of Output Tokens compared to verbose JSON. When results hit the applied `LIMIT`, a `-- rows: N (truncated at LIMIT X)` footer is appended so the LLM does not assume a complete dataset.
+8. **MCP Completions**: Table names and template keywords support the official `completions/complete` capability for resource templates (`mysql://tables/{name}`) and the `query_templates` prompt.
 
 ---
 
@@ -23,7 +24,7 @@ Designed specifically to solve the shortcomings of current generic MCP servers t
 
 - Node.js v20 or higher
 - MySQL 5.7 or higher (MySQL 8.0+ recommended)
-- A MySQL user with `SELECT` and `SHOW VIEW` privileges.
+- A MySQL user with `SELECT` privileges (plus `SHOW VIEW` only if you need `SHOW CREATE` output of views; the server does not use it). Least privilege matters: the SQL policy is defense in depth, not a substitute for database grants.
 
 ---
 
@@ -135,6 +136,38 @@ To use within Cursor IDE:
 | `ALLOW_DDL_OPERATION` | Enable Data Definition Language (`CREATE`, `ALTER`, `DROP`, `RENAME`). | `false` | No |
 | `DB_SSL` | Enable TLS for the MySQL connection (recommended for managed/cloud databases). | `false` | No |
 | `DB_SSL_REJECT_UNAUTHORIZED` | Reject self-signed or untrusted TLS certificates when `DB_SSL=true`. | `true` | No |
+| `MCP_ALLOWED_SCHEMAS` | Comma-separated schemas statements may reference. `DB_NAME` is always included. System schemas are only reachable if listed here. | `DB_NAME` | No |
+| `MCP_ALLOW_SHOW` | Allow `SHOW` statements (they bypass schema scoping). | `false` | No |
+| `MCP_DENY_FUNCTIONS` | Extra comma-separated function names to reject, on top of the built-in denylist. | (none) | No |
+| `MCP_INCLUDE_VIEWS` | Include SQL views in the schema graph (`search_schema`, resources, completions). | `true` | No |
+| `MCP_EXPLAIN_ON_VIEW_ERROR` | What the full-scan gate does when MySQL cannot `EXPLAIN` a view because the account has no privileges on its base tables (`ER_VIEW_NO_EXPLAIN`): `block` the query, or `allow` it and rely on `MYSQL_QUERY_TIMEOUT`. | `block` | No |
+
+---
+
+## 🔒 SQL Policy
+
+Enforced on every statement (reads and writes) after parsing; anything the parser cannot understand is rejected (fail-closed). Violations return `Security Error: ...` with error code `SQL_POLICY`.
+
+| Rejected | Examples | Override |
+|----------|----------|----------|
+| Schemas other than `DB_NAME` | `otherdb.t`, nested in subqueries/CTEs/`UNION`s | `MCP_ALLOWED_SCHEMAS` |
+| System schemas | `information_schema.*`, `mysql.user`, `performance_schema.*`, `sys.*` | list them in `MCP_ALLOWED_SCHEMAS` |
+| `SHOW` (any form, including after comments) | `SHOW GRANTS`, `/**/ SHOW TABLES` | `MCP_ALLOW_SHOW=true` |
+| Server and user variables | `@@version`, `@x` | — |
+| `SELECT ... INTO` | `INTO OUTFILE`, `INTO DUMPFILE`, `INTO @v` | — |
+| Locking reads | `FOR UPDATE`, `LOCK IN SHARE MODE` | — |
+| Executable comments | `/*!50000 ... */`, `/*M! ... */` | — |
+| Dangerous functions | `LOAD_FILE`, `SLEEP`, `BENCHMARK`, `GET_LOCK`, `MASTER_POS_WAIT`, `USER()`, `CURRENT_USER()`, `DATABASE()`, `VERSION()`, `CONNECTION_ID()`, `sys_exec`… | add more with `MCP_DENY_FUNCTIONS` |
+| Schema-qualified functions outside the allowed schemas | `otherdb.fn()` | `MCP_ALLOWED_SCHEMAS` |
+
+> The policy is **defense in depth**. Always connect with a dedicated account that has `SELECT` only on what the model should see — never the application's own account, and never with the `FILE` privilege.
+
+### View-based deployments
+
+To expose only part of a database, create a schema that contains only views (selecting the allowed columns, masking the rest) and point the server at it with an account that has `SELECT` on that schema only.
+
+- Views are listed by `search_schema` like tables. Their DDL is built from `information_schema.columns` (names, types, comments), so the account needs no `SHOW VIEW` and **the view definition — base tables, columns, masking expressions — is never sent to the model**.
+- MySQL cannot `EXPLAIN` a query on a view when the account has no privileges on the view's base tables (`ER_VIEW_NO_EXPLAIN`). By default the full-scan gate then blocks the query with an explanatory error; set `MCP_EXPLAIN_ON_VIEW_ERROR=allow` to skip the gate for those queries and rely on `MYSQL_QUERY_TIMEOUT` (and the server's own `max_execution_time`).
 
 ---
 

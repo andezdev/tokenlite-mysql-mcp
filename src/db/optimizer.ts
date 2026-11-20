@@ -1,7 +1,16 @@
 import pkg from 'node-sql-parser';
 const { Parser } = pkg;
 import { Pool } from 'mysql2/promise';
+import { log } from '../utils/logger.js';
 import { getExplainMaxScanRows, getQueryRowLimit } from '../utils/queryLimits.js';
+import {
+    type SqlPolicyOptions,
+    SqlPolicyError,
+    assertRawSqlAllowed,
+    enforceSqlPolicy,
+    getSqlPolicyOptions,
+    isShowStatement,
+} from './sqlPolicy.js';
 
 export class OptimizerError extends Error {
     code?: string;
@@ -45,16 +54,32 @@ function getAppliedLimit(selectAst: any, maxLimit: number): number {
 }
 
 /**
- * Parses the SQL query to AST, injects a LIMIT if missing for SELECTs, and returns the modified SQL and AST type.
+ * Parses the SQL query to AST, enforces the SQL policy (see sqlPolicy.ts), injects a LIMIT if missing
+ * for SELECTs, and returns the modified SQL and AST type.
  */
-export function injectLimitAst(sql: string, maxLimit: number = getQueryRowLimit()): ParseSqlResult {
-    if (sql.trim().toUpperCase().startsWith('SHOW')) {
-        return { sql, astType: 'show' };
-    }
-
+export function injectLimitAst(
+    sql: string,
+    maxLimit: number = getQueryRowLimit(),
+    policy: SqlPolicyOptions = getSqlPolicyOptions(),
+): ParseSqlResult {
     try {
+        assertRawSqlAllowed(sql);
+
+        if (isShowStatement(sql)) {
+            if (!policy.allowShow) {
+                throw new SqlPolicyError("SHOW statements are disabled. Use the 'search_schema' tool to inspect tables (or set MCP_ALLOW_SHOW=true).");
+            }
+            return { sql, astType: 'show' };
+        }
+
         const { ast, astOpt } = parseSingleAst(sql);
         const type = ast.type?.toLowerCase();
+
+        if (type === 'show' && !policy.allowShow) {
+            throw new SqlPolicyError("SHOW statements are disabled. Use the 'search_schema' tool to inspect tables (or set MCP_ALLOW_SHOW=true).");
+        }
+
+        enforceSqlPolicy(sql, ast, policy);
 
         if (type === 'select') {
             const selectAst = ast as any;
@@ -86,6 +111,9 @@ export function injectLimitAst(sql: string, maxLimit: number = getQueryRowLimit(
     } catch (e: any) {
         if (e instanceof OptimizerError) {
             throw e;
+        }
+        if (e instanceof SqlPolicyError) {
+            throw new OptimizerError(e.message, 'SQL_POLICY');
         }
         throw new OptimizerError(`SQL Syntax Error or Unsupported Feature: ${e.message}`);
     }
@@ -155,7 +183,6 @@ export async function getIndexHint(tableName: string, pool: Pool): Promise<strin
  */
 export async function analyzeQueryPlan(sql: string, pool: Pool): Promise<void> {
     if (!isBlockingEnabled()) return;
-    if (sql.trim().toUpperCase().startsWith('SHOW')) return;
 
     try {
         const [planRows] = await pool.query<any[]>(`EXPLAIN ${sql}`);
@@ -176,6 +203,22 @@ export async function analyzeQueryPlan(sql: string, pool: Pool): Promise<void> {
         if (e instanceof OptimizerError) {
             throw e;
         }
+        if (isViewExplainPrivilegeError(e)) {
+            if (process.env.MCP_EXPLAIN_ON_VIEW_ERROR === 'allow') {
+                log("warning", "EXPLAIN unavailable for a view (no privileges on its base tables); full-scan gate skipped, MYSQL_QUERY_TIMEOUT still applies.", "optimizer");
+                return;
+            }
+            throw new OptimizerError(
+                "Query Analysis Error: EXPLAIN cannot analyze this query because it reads a view whose base tables are not accessible to this account (ER_VIEW_NO_EXPLAIN). " +
+                "Set MCP_EXPLAIN_ON_VIEW_ERROR=allow to skip the full-scan gate for such queries and rely on MYSQL_QUERY_TIMEOUT instead.",
+                e.code,
+            );
+        }
         throw new OptimizerError(`Query Analysis Error: ${e.message}`, e.code);
     }
+}
+
+/** MySQL/MariaDB error 1345: EXPLAIN on a view without privileges on the underlying tables. */
+export function isViewExplainPrivilegeError(e: any): boolean {
+    return e?.errno === 1345 || e?.code === 'ER_VIEW_NO_EXPLAIN';
 }

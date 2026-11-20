@@ -61,7 +61,7 @@ export function registerExecuteQueryTool(server: McpServer, prefix: string = "")
     server.registerTool(
         `${prefix}execute_safe_query`,
         {
-            description: `Executes SQL against the database with AST validation. SELECT results are capped by MCP_QUERY_ROW_LIMIT (default 500, AST-injected LIMIT) and include a '-- rows: N (truncated at LIMIT X)' footer when the cap is reached. Unindexed full table scans above MCP_EXPLAIN_MAX_SCAN_ROWS are blocked before execution.${writeHint} CRITICAL: NEVER use this tool (e.g., SHOW TABLES or querying information_schema) to explore schema — use 'search_schema' first.`,
+            description: `Executes SQL against the database with AST validation. SELECT results are capped by MCP_QUERY_ROW_LIMIT (default 500, AST-injected LIMIT) and include a '-- rows: N (truncated at LIMIT X)' footer when the cap is reached. Unindexed full table scans above MCP_EXPLAIN_MAX_SCAN_ROWS are blocked before execution.${writeHint} Only the configured schema is reachable: SHOW statements, information_schema/mysql/performance_schema/sys, other schemas, server variables, SELECT ... INTO and functions such as LOAD_FILE or SLEEP are rejected by the server. To explore the schema use 'search_schema'.`,
             inputSchema: {
                 sql: z.string().max(10000).describe(
                     isReadOnly
