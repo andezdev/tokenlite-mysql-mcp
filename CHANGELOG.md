@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v5.0.0...tokenlite-mysql-mcp-v5.1.0) (2026-11-23)
+
+
+### Features
+
+* **engine:** expose a transport-agnostic query engine via createEngine() ([21422d9](https://github.com/andezdev/tokenlite-mysql-mcp/commit/21422d96c1b6dfe5a3c0b7c029577475315aba8a))
+
 ## [5.0.0](https://github.com/andezdev/tokenlite-mysql-mcp/compare/tokenlite-mysql-mcp-v4.1.0...tokenlite-mysql-mcp-v5.0.0) (2026-11-20)
 
 
