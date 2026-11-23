@@ -28,8 +28,11 @@ This project enforces strict quality and semantic standards to ensure maximum sa
    ```
 2. Run tests:
    ```bash
-   npm test
+   make test
    ```
+   `make test` points the suite at the test container (`127.0.0.1:3307`, user `mcp_test`). With `npm test`
+   directly, export `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` yourself; otherwise the
+   database tests fail with `ECONNREFUSED` (the defaults are `localhost:3306`).
 3. Run tests with coverage report:
    ```bash
    npm run test:coverage
