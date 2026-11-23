@@ -1,20 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import Fuse from 'fuse.js';
 import dotenv from 'dotenv';
 import { log } from '../utils/logger.js';
+import { MetadataStore, type QueryTemplate } from '../engine/metadata.js';
 
 (dotenv.config as any)({ quiet: true });
 
-export interface QueryTemplate {
-    name: string;
-    description: string;
-    sql: string;
-}
+export type { QueryTemplate };
 
 let metadataCache: Record<string, any> = {};
 let templatesCache: QueryTemplate[] = [];
-let templateSearcher: Fuse<QueryTemplate> | null = null;
+let templatesLoaded = false;
+let store = new MetadataStore();
+
+/** The metadata loaded by initMetadata() (MCP_METADATA_PATH / MCP_TEMPLATES_PATH). */
+export function getMetadataStore(): MetadataStore {
+    return store;
+}
 
 export function initMetadata() {
     const metadataPath = process.env.MCP_METADATA_PATH;
@@ -33,83 +35,34 @@ export function initMetadata() {
         try {
             const raw = fs.readFileSync(templatesPath, 'utf8');
             templatesCache = JSON.parse(raw);
-            templateSearcher = new Fuse(templatesCache, {
-                keys: ['name', 'description'],
-                threshold: 0.5,
-                ignoreLocation: true
-            });
+            // Build the searcher inside the try (as before): an invalid templates file is logged, not thrown.
+            new MetadataStore({}, templatesCache, true);
+            templatesLoaded = true;
             log("info", `Loaded ${templatesCache.length} SQL templates from ${templatesPath}`, "metadata");
         } catch (err) {
             log("error", `Error loading templates.json: ${err}`, "metadata");
         }
     }
+
+    store = new MetadataStore(metadataCache, templatesCache, templatesLoaded);
 }
 
-/**
- * Extracts all semantic definitions relevant to a specific table.
- * Example: if metadata has "orders.status", and tableName is "orders", it returns that chunk.
- */
 export function getTableSemantics(tableName: string): Record<string, any> {
-    const semantics: Record<string, any> = {};
-    const prefix = `${tableName}.`;
-    
-    for (const key of Object.keys(metadataCache)) {
-        if (key.startsWith(prefix) || key === tableName) {
-            semantics[key] = metadataCache[key];
-        }
-    }
-    
-    return semantics;
+    return store.getTableSemantics(tableName);
 }
 
 export function getCustomRelationships(): Map<string, string> {
-    const relationships = new Map<string, string>();
-    const raw = metadataCache['_relationships'];
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return relationships;
-
-    for (const [source, target] of Object.entries(raw)) {
-        if (typeof target !== 'string') continue;
-        if (!source.includes('.') || !target.includes('.')) continue;
-        relationships.set(source, target);
-    }
-    return relationships;
+    return store.getCustomRelationships();
 }
 
-/**
- * Performs a fuzzy search on the loaded templates.
- */
 export function hasTemplatesLoaded(): boolean {
-    return templatesCache.length > 0;
+    return store.hasTemplatesLoaded();
 }
 
 export function getTemplateCompletionSuggestions(value: string): string[] {
-    if (!hasTemplatesLoaded()) {
-        return [];
-    }
-
-    const needle = value.trim().toLowerCase();
-    const suggestions = new Set<string>();
-
-    for (const template of templatesCache) {
-        if (!needle || template.name.toLowerCase().includes(needle)) {
-            suggestions.add(template.name);
-        }
-        if (!needle || template.description.toLowerCase().includes(needle)) {
-            suggestions.add(template.description.split(' ')[0].toLowerCase());
-        }
-    }
-
-    return Array.from(suggestions).slice(0, 20);
+    return store.getTemplateCompletionSuggestions(value);
 }
 
 export function searchTemplates(query: string): QueryTemplate[] {
-    if (!templateSearcher) return [];
-    
-    // If query is empty, return all (capped to a safe limit, e.g., 10)
-    if (!query.trim()) {
-        return templatesCache.slice(0, 10);
-    }
-    
-    const results = templateSearcher.search(query);
-    return results.map(r => r.item);
+    return store.searchTemplates(query);
 }

@@ -4,6 +4,19 @@
   "mcpName": "io.github.andezdev/tokenlite-mysql-mcp",
   "description": "A secure, efficient, and intelligent MySQL server for the Model Context Protocol",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./engine": {
+      "types": "./dist/engine/index.d.ts",
+      "default": "./dist/engine/index.js"
+    },
+    "./package.json": "./package.json",
+    "./dist/*": "./dist/*"
+  },
   "type": "module",
   "bin": {
     "tokenlite-mysql-mcp": "./dist/index.js"

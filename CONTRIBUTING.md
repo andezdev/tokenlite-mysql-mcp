@@ -28,13 +28,26 @@ This project enforces strict quality and semantic standards to ensure maximum sa
    ```
 2. Run tests:
    ```bash
-   npm test
+   make test
    ```
+   `make test` points the suite at the test container (`127.0.0.1:3307`, user `mcp_test`). With `npm test`
+   directly, export `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` yourself; otherwise the
+   database tests fail with `ECONNREFUSED` (the defaults are `localhost:3306`).
 3. Run tests with coverage report:
    ```bash
    npm run test:coverage
    ```
    This generates a coverage report and enforces minimum thresholds (currently 70% lines). CI will fail if coverage drops below the threshold. Focus coverage efforts on `src/db/` and `src/tools/` — these contain security-critical code paths.
+
+### Stdio contract
+`tests/e2e/stdioContract.test.ts` spawns the stdio server and compares what a client sees (tool, prompt and resource listings and the exact output of representative calls) with a recorded fixture. **A diff there is a user-visible change.** Only regenerate the fixture when the change is intentional and say so in the PR:
+```bash
+UPDATE_STDIO_CONTRACT=1 npx vitest run tests/e2e/stdioContract.test.ts
+STDIO_CONTRACT_DIST=1 npx vitest run tests/e2e   # same check against the compiled build (npm run build first)
+```
+
+### Engine boundary
+Code under `src/engine/` must not read environment variables, must have no import-time side effects and must not import any MCP SDK (`tests/engine/boundary.test.ts` enforces it). Environment handling belongs to the stdio layer (`src/db/`, `src/tools/`, `src/index.ts`).
 
 ## 📝 Commit Message Standard (MANDATORY)
 

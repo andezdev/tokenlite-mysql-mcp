@@ -292,6 +292,32 @@ Then, point `tokenlite-mysql-mcp` to `localhost` and port `3306`.
 If you need to host this MCP Server in the cloud (AWS, GCP) and have multiple Claude desktop clients connect to it remotely via HTTP/SSE, do not modify this codebase to add Express/HTTP logic. 
 Instead, wrap the process using standard open-source MCP proxies like [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy). This cleanly separates the transport layer security from the AI logic.
 
+If you are building your own MCP server (for example a Streamable HTTP server with per-user authorization), embed the engine instead (see below).
+
+### 3. Embedding the engine (library use)
+The query engine (SQL policy, LIMIT injection, full-scan gate, schema graph, view DDL, CSV output) is also available as a library, independent of the stdio server and of any MCP SDK version:
+
+```ts
+import { createEngine } from '@andezdev/tokenlite-mysql-mcp/engine';
+
+const engine = createEngine({
+    connection: { host: 'db.internal', user: 'readonly_reporting', password: process.env.REPORTING_DB_PASSWORD, database: 'reporting', ssl: true },
+    queryRowLimit: 100,
+    queryTimeoutMs: 10_000,
+    fullScanGate: { onViewExplainError: 'allow' }, // view-only accounts: EXPLAIN on views is not possible
+    metadata: JSON.parse(fs.readFileSync('metadata.json', 'utf8')), // optional
+});
+await engine.init(); // builds the schema graph
+
+// Register the tools on your own MCP server (names, descriptions and zod shapes are provided):
+server.registerTool('execute_safe_query', engine.definitions.execute_safe_query, (args) => engine.executeQuery(args));
+```
+
+- **Explicit configuration only.** The engine never reads environment variables or `.env` files and has no side effects on import; the defaults are the same as the stdio server's (500 rows, 15 s timeout, read-only, full-scan gate on, views included).
+- **One engine per database user.** Each engine owns its connection pool, schema graph, DDL cache and metadata, so several engines (e.g. one per access profile) can live in one process without sharing state.
+- **Handlers** (`searchSchema`, `executeQuery`, `explainQuery`, `ping`, `refreshSchema`) return MCP `CallToolResult` objects. Rate limiting, authentication and auditing are the host's responsibility.
+- The stdio server is built on the same engine and behaves exactly as before (guarded by a recorded contract test).
+
 ## 🐛 Troubleshooting
 
 **Error: `OptimizerError: Full table scan detected...`**

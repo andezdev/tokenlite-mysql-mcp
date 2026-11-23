@@ -1,42 +1,19 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
-import { injectLimitAst, analyzeQueryPlan, assertWriteScope, validateExplainSelect } from './optimizer.js';
 import { log } from '../utils/logger.js';
-import { getQueryRowLimit } from '../utils/queryLimits.js';
+import {
+    executeExplainQuery as executeExplainQueryCore,
+    executeSafeQuery as executeSafeQueryCore,
+    type SafeQueryResult,
+} from '../engine/query.js';
+import { defaultContext } from './defaultContext.js';
+
+export { isRetryableError, type SafeQueryResult } from '../engine/query.js';
 
 // Supress dotenv logs so they don't corrupt the MCP JSON-RPC stdout stream
 (dotenv.config as any)({ quiet: true });
 
-const MAX_RETRY_ATTEMPTS = parseInt(process.env.MYSQL_RETRY_ATTEMPTS || '3', 10);
-const RETRY_BASE_DELAY_MS = parseInt(process.env.MYSQL_RETRY_DELAY_MS || '1000', 10);
 const QUEUE_LIMIT = parseInt(process.env.MYSQL_QUEUE_LIMIT || '50', 10);
-function getQueryTimeoutMs(): number {
-    return parseInt(process.env.MYSQL_QUERY_TIMEOUT || '15000', 10);
-}
-
-const RETRYABLE_ERRORS = new Set([
-    'ECONNREFUSED',
-    'PROTOCOL_CONNECTION_LOST',
-    'ECONNRESET',
-    'ETIMEDOUT',
-    'ER_CON_COUNT_ERROR',
-]);
-
-export interface SafeQueryResult {
-    data: any;
-    appliedLimit?: number;
-    truncated?: boolean;
-}
-
-export function isRetryableError(error: any): boolean {
-    if (RETRYABLE_ERRORS.has(error.code)) return true;
-    if (error.message?.includes('Connection lost')) return true;
-    return false;
-}
-
-function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 function buildSslConfig(): mysql.SslOptions | undefined {
     if (process.env.DB_SSL !== 'true') {
@@ -89,92 +66,18 @@ export function getDbName(): string {
     return process.env.DB_NAME || 'test';
 }
 
-async function queryWithRetry(opts: { sql: string; timeout?: number }): Promise<any> {
-    let lastError: Error | undefined;
-
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-        try {
-            const [rows] = await pool.query(opts);
-            return rows;
-        } catch (error: any) {
-            lastError = error;
-
-            if (!isRetryableError(error)) {
-                throw error;
-            }
-
-            if (attempt < MAX_RETRY_ATTEMPTS) {
-                const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-                log("warning", `Connection error (${error.code}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS})...`, "pool");
-                await sleep(delay);
-            }
-        }
-    }
-
-    throw lastError;
-}
-
 /**
  * Executes a safe query with a Timeout and Granular Permissions.
  */
-export async function executeSafeQuery(sql: string): Promise<SafeQueryResult> {
-    const { sql: astOptimizedSql, astType, appliedLimit, hasWhere } = injectLimitAst(sql);
-
-    if (astType !== 'select' && astType !== 'show') {
-        const blockedTypes = ['call', 'grant', 'revoke', 'set', 'use'];
-        if (blockedTypes.includes(astType)) {
-            throw new Error(`Security Error: Dangerous operation '${astType}' is strictly prohibited.`);
-        }
-
-        const allowInsert = process.env.ALLOW_INSERT_OPERATION === 'true';
-        const allowUpdate = process.env.ALLOW_UPDATE_OPERATION === 'true';
-        const allowDelete = process.env.ALLOW_DELETE_OPERATION === 'true';
-        const allowDdl = process.env.ALLOW_DDL_OPERATION === 'true';
-
-        let isAllowed = false;
-        if ((astType === 'insert' || astType === 'replace') && allowInsert) isAllowed = true;
-        else if (astType === 'update' && allowUpdate) isAllowed = true;
-        else if ((astType === 'delete' || astType === 'truncate') && allowDelete) isAllowed = true;
-        else if (['create', 'alter', 'drop', 'rename'].includes(astType) && allowDdl) isAllowed = true;
-
-        if (!isAllowed) {
-            throw new Error(`Security Error: Operation '${astType}' is disabled in the server configuration.`);
-        }
-
-        assertWriteScope(astType, hasWhere);
-    }
-
-    if (astType === 'select') {
-        await analyzeQueryPlan(astOptimizedSql, pool);
-    }
-
-    const rows = await queryWithRetry({
-        sql: astOptimizedSql,
-        timeout: getQueryTimeoutMs(),
-    });
-
-    if (astType === 'select' && Array.isArray(rows)) {
-        const limit = appliedLimit ?? getQueryRowLimit();
-        return {
-            data: rows,
-            appliedLimit: limit,
-            truncated: rows.length >= limit,
-        };
-    }
-
-    return { data: rows };
+export function executeSafeQuery(sql: string): Promise<SafeQueryResult> {
+    return executeSafeQueryCore(defaultContext(), sql);
 }
 
 /**
  * Runs EXPLAIN on a validated SELECT query with timeout protection.
  */
-export async function executeExplainQuery(sql: string): Promise<any[]> {
-    const { sql: validatedSql } = validateExplainSelect(sql);
-    const rows = await queryWithRetry({
-        sql: `EXPLAIN ${validatedSql}`,
-        timeout: getQueryTimeoutMs(),
-    });
-    return rows as any[];
+export function executeExplainQuery(sql: string): Promise<any[]> {
+    return executeExplainQueryCore(defaultContext(), sql);
 }
 
 /**
