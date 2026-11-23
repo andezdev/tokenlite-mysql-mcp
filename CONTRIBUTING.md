@@ -36,6 +36,16 @@ This project enforces strict quality and semantic standards to ensure maximum sa
    ```
    This generates a coverage report and enforces minimum thresholds (currently 70% lines). CI will fail if coverage drops below the threshold. Focus coverage efforts on `src/db/` and `src/tools/` — these contain security-critical code paths.
 
+### Stdio contract
+`tests/e2e/stdioContract.test.ts` spawns the stdio server and compares what a client sees (tool, prompt and resource listings and the exact output of representative calls) with a recorded fixture. **A diff there is a user-visible change.** Only regenerate the fixture when the change is intentional and say so in the PR:
+```bash
+UPDATE_STDIO_CONTRACT=1 npx vitest run tests/e2e/stdioContract.test.ts
+STDIO_CONTRACT_DIST=1 npx vitest run tests/e2e   # same check against the compiled build (npm run build first)
+```
+
+### Engine boundary
+Code under `src/engine/` must not read environment variables, must have no import-time side effects and must not import any MCP SDK (`tests/engine/boundary.test.ts` enforces it). Environment handling belongs to the stdio layer (`src/db/`, `src/tools/`, `src/index.ts`).
+
 ## 📝 Commit Message Standard (MANDATORY)
 
 To fully automate our changelog generation and NPM versioning, this repository uses Google's **Release Please** bot. 

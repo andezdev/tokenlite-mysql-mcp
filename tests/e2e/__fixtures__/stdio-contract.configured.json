@@ -1,0 +1,824 @@
+[
+  {
+    "call": "initialize",
+    "result": {
+      "serverInfo": {
+        "name": "tokenlite-mysql-mcp",
+        "version": "<version>"
+      },
+      "capabilities": {
+        "logging": {},
+        "completions": {},
+        "prompts": {
+          "listChanged": true
+        },
+        "resources": {
+          "subscribe": true,
+          "listChanged": true
+        },
+        "tools": {
+          "listChanged": true
+        }
+      }
+    }
+  },
+  {
+    "call": "tools/list",
+    "result": {
+      "tools": [
+        {
+          "name": "mcp_test_db_search_schema",
+          "description": "CRITICAL TOOL FOR SCHEMA EXPLORATION: Use this FIRST before writing queries. Fuzzy-searches a table name and returns its DDL plus direct parent/child table DDLs (Auto-Join Context), inferred FK hints, and semantic dictionary entries from metadata.json when configured. If templates.json is loaded, reminds you to use the 'query_templates' prompt for business metrics. Do NOT use execute_safe_query for schema exploration.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "The name of the table or entity to search for (e.g. 'users', 'invoices')."
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "mcp_test_db_execute_safe_query",
+          "description": "Executes SQL against the database with AST validation. SELECT results are capped by MCP_QUERY_ROW_LIMIT (default 500, AST-injected LIMIT) and include a '-- rows: N (truncated at LIMIT X)' footer when the cap is reached. Unindexed full table scans above MCP_EXPLAIN_MAX_SCAN_ROWS are blocked before execution. Write operations (INSERT/UPDATE/DELETE/DDL) are enabled; UPDATE and DELETE require a WHERE clause. Only the configured schema is reachable: SHOW statements, information_schema/mysql/performance_schema/sys, other schemas, server variables, SELECT ... INTO and functions such as LOAD_FILE or SLEEP are rejected by the server. To explore the schema use 'search_schema'.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sql": {
+                "type": "string",
+                "maxLength": 10000,
+                "description": "SQL statement to execute. SELECT is always allowed; INSERT/UPDATE/DELETE/DDL only when enabled in server config. UPDATE and DELETE must include a WHERE clause."
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "mcp_test_db_refresh_schema",
+          "description": "Rebuilds the internal Schema Graph from the live database and notifies subscribed MCP resources. Use when search_schema or execute_safe_query fail with missing table/column errors after a schema change.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "idempotentHint": true
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "mcp_test_db_ping",
+          "description": "Health check: verifies the database connection is alive. Returns JSON with status, MySQL server version, and connection pool stats (active, idle, queued).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "error"
+                ],
+                "description": "Whether the database connection is healthy"
+              },
+              "server_version": {
+                "description": "MySQL server version",
+                "type": "string"
+              },
+              "pool": {
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "number",
+                    "description": "Active connections in the pool"
+                  },
+                  "idle": {
+                    "type": "number",
+                    "description": "Idle connections in the pool"
+                  },
+                  "queue": {
+                    "type": "number",
+                    "description": "Queued requests waiting for a connection"
+                  }
+                },
+                "required": [
+                  "active",
+                  "idle",
+                  "queue"
+                ],
+                "additionalProperties": false
+              },
+              "error": {
+                "description": "Error message if status is 'error'",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "pool"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "mcp_test_db_explain_query",
+          "description": "Returns MySQL EXPLAIN output as CSV for a validated SELECT query. SQL is AST-validated and timeout-protected; ANALYZE and non-SELECT statements are blocked. Unlike execute_safe_query, this does NOT block full table scans — use it to diagnose why a query was blocked or to verify index usage before executing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sql": {
+                "type": "string",
+                "maxLength": 10000,
+                "description": "The SELECT query to analyze."
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "SELECT identifier",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "select_type": {
+                      "description": "Type of SELECT (SIMPLE, PRIMARY, SUBQUERY, etc.)",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "table": {
+                      "description": "Table name",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "partitions": {
+                      "description": "Partition pruning info (MySQL 8+)",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "description": "Join type (ALL, index, range, ref, const, etc.)",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "possible_keys": {
+                      "description": "Indexes that could be used",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "key": {
+                      "description": "Index actually chosen",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "key_len": {
+                      "description": "Length of the chosen key",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "ref": {
+                      "description": "Columns compared to the index",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "rows": {
+                      "description": "Estimated rows to examine",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "filtered": {
+                      "description": "Estimated filtered percentage (MySQL 8+)",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "Extra": {
+                      "description": "Additional information",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "select_type",
+                    "table",
+                    "type",
+                    "possible_keys",
+                    "key",
+                    "key_len",
+                    "ref",
+                    "rows",
+                    "Extra"
+                  ],
+                  "additionalProperties": {}
+                },
+                "description": "EXPLAIN output rows"
+              }
+            },
+            "required": [
+              "rows"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "idempotentHint": true
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "prompts/list",
+    "result": {
+      "prompts": [
+        {
+          "name": "mcp_test_db_query_templates",
+          "description": "Returns pre-approved SQL templates for business metrics (requires templates.json via MCP_TEMPLATES_PATH). Use before writing analytical SQL from scratch. Execute the returned SQL via execute_safe_query.",
+          "arguments": [
+            {
+              "name": "query",
+              "description": "Keyword to search for in templates (e.g., 'revenue', 'ltv').",
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "call": "resources/list",
+    "result": {
+      "resources": [
+        {
+          "name": "schema",
+          "uri": "mysql://schema",
+          "description": "Lists all available tables in the database schema"
+        }
+      ]
+    }
+  },
+  {
+    "call": "resources/templates/list",
+    "result": {
+      "resourceTemplates": [
+        {
+          "name": "table",
+          "uriTemplate": "mysql://tables/{name}",
+          "description": "Exposes the SQL DDL and semantic dictionary of a specific table"
+        }
+      ]
+    }
+  },
+  {
+    "call": "search_schema hit",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "-- === MATCHED TABLE ===\nCREATE TABLE `orders` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `customer_id` int NOT NULL,\n  `status` enum('pending','shipped','delivered','cancelled','refunded') DEFAULT 'pending',\n  `total` decimal(10,2) DEFAULT NULL,\n  `currency` varchar(3) DEFAULT 'USD',\n  `payment_method` varchar(50) DEFAULT NULL,\n  `shipping_notes` text,\n  `order_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_customer_id` (`customer_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n/* SEMANTIC DICTIONARY:\n{\"orders.status\":{\"pending\":\"The user has checked out but payment is still processing or order is being prepared.\",\"shipped\":\"The item is physically with the courier and in transit to the customer.\",\"delivered\":\"The customer has received the package.\"}}\n*/\n\n-- === RELATED TABLE ===\nCREATE TABLE `customers` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `phone` varchar(50) DEFAULT NULL,\n  `company` varchar(255) DEFAULT NULL,\n  `tier` enum('free','starter','pro','enterprise') DEFAULT 'free',\n  `notes` text,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n/* SEMANTIC DICTIONARY:\n{\"customers.created_at\":\"UTC timestamp of when the user first registered on our platform.\"}\n*/\n\n-- === RELATED TABLE ===\nCREATE TABLE `order_items` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `order_id` int NOT NULL,\n  `product_id` int NOT NULL,\n  `quantity` int NOT NULL,\n  `unit_price` decimal(10,2) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `fk_item_order` (`order_id`),\n  CONSTRAINT `fk_item_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n/* SEMANTIC DICTIONARY:\n{\"order_items.quantity\":\"Number of units purchased for this specific product in the given order.\"}\n*/\n\n-- === HEURISTIC GRAPH HINTS ===\n/* INFERRED PARENT (confidence: 100): `orders`.`customer_id` -> `customers`.`id` */\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */",
+          "annotations": {
+            "audience": [
+              "assistant"
+            ],
+            "priority": 0.9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "search_schema fuzzy",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "-- === MATCHED TABLE ===\nCREATE TABLE `customers` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `phone` varchar(50) DEFAULT NULL,\n  `company` varchar(255) DEFAULT NULL,\n  `tier` enum('free','starter','pro','enterprise') DEFAULT 'free',\n  `notes` text,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n/* SEMANTIC DICTIONARY:\n{\"customers.created_at\":\"UTC timestamp of when the user first registered on our platform.\"}\n*/\n\n-- === RELATED TABLE ===\nCREATE TABLE `orders` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `customer_id` int NOT NULL,\n  `status` enum('pending','shipped','delivered','cancelled','refunded') DEFAULT 'pending',\n  `total` decimal(10,2) DEFAULT NULL,\n  `currency` varchar(3) DEFAULT 'USD',\n  `payment_method` varchar(50) DEFAULT NULL,\n  `shipping_notes` text,\n  `order_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_customer_id` (`customer_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n/* SEMANTIC DICTIONARY:\n{\"orders.status\":{\"pending\":\"The user has checked out but payment is still processing or order is being prepared.\",\"shipped\":\"The item is physically with the courier and in transit to the customer.\",\"delivered\":\"The customer has received the package.\"}}\n*/\n\n-- === RELATED TABLE ===\nCREATE TABLE `shipping_addresses` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `customer_id` int NOT NULL,\n  `street` varchar(255) NOT NULL,\n  `city` varchar(100) NOT NULL,\n  `country` varchar(100) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `fk_customer_address` (`customer_id`),\n  CONSTRAINT `fk_customer_address` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n\n-- === HEURISTIC GRAPH HINTS ===\n/* INFERRED CHILD (confidence: 100): `orders`.`customer_id` -> `customers`.`id` */\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */",
+          "annotations": {
+            "audience": [
+              "assistant"
+            ],
+            "priority": 0.9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "search_schema miss",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "No table found matching 'zzqqxx'. Use refresh_schema() if you believe it was recently added."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "search_schema view",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "-- === MATCHED TABLE ===\nCREATE VIEW `customers_public` (\n  `id` int NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `email_masked` varchar(5),\n  `tier` enum('free','starter','pro','enterprise')\n) /* view: definition not exposed */;\n\n\n/* ⚠️ CRITICAL REMINDER: If you are asked to calculate business metrics (LTV, revenue, etc.), DO NOT write the SQL manually. You MUST use the `query_templates` prompt first to fetch the official template. */",
+          "annotations": {
+            "audience": [
+              "assistant"
+            ],
+            "priority": 0.9
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "select",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "id,name,tier\n1,John Doe,enterprise\n2,Jane Smith,free\n3,Bulk User 1,starter\n-- rows: 3 (truncated at LIMIT 3)",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "select truncated",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "id\n1\n2\n3\n4\n5\n-- rows: 5 (truncated at LIMIT 5)",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "select join",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "name,status\nJohn Doe,shipped",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "select empty",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "No data returned.",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "select full scan blocked",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "id\n3\n4\n5\n7\n8\n-- rows: 5 (truncated at LIMIT 5)",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "policy: LOAD_FILE",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: Function 'LOAD_FILE' is not allowed."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "policy: information_schema",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: Access to schema 'information_schema' is not allowed (table reference 'information_schema.tables')."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "policy: SHOW",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Tables_in_mcp_test_db\ncategories\ncustomers\ncustomers_public\norder_items\norders\nproduct_tags\nproducts\nshipping_addresses\ntags\ntest_permissions",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "policy: INTO OUTFILE",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: SELECT ... INTO (OUTFILE, DUMPFILE or variables) is not allowed."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "policy: executable comment",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: Executable comments (/*! ... */) are not allowed."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "write disabled",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Access to the requested table was denied."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "unknown column",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "A referenced column does not exist in the database.\n\nHint: If you believe this column exists, the DBA might have just added it. Please call the 'refresh_schema' tool and try again."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "syntax error",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "SQL Syntax Error or Unsupported Feature: Expected \"#\", \"--\", \"/*\", \":=\", \"=\", or [ \\t\\n\\r] but \"1\" found."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "explain",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "id,select_type,table,partitions,type,possible_keys,key,key_len,ref,rows,filtered,Extra\n1,SIMPLE,customers,∅,const,PRIMARY,PRIMARY,4,const,1,100,Using index",
+          "annotations": {
+            "audience": [
+              "assistant"
+            ],
+            "priority": 0.5
+          }
+        }
+      ],
+      "structuredContent": {
+        "rows": [
+          {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "customers",
+            "partitions": null,
+            "type": "const",
+            "possible_keys": "PRIMARY",
+            "key": "PRIMARY",
+            "key_len": "4",
+            "ref": "const",
+            "rows": 1,
+            "filtered": 100,
+            "Extra": "Using index"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "call": "explain non-select",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: Only SELECT queries can be explained. Received 'delete'."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "update no-op",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Operation executed successfully.\nAffected rows: 0",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "update without WHERE",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Security Error: UPDATE without a WHERE clause is not allowed. Add a scoped filter to target specific rows."
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "call": "show tables",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Tables_in_mcp_test_db\ncategories\ncustomers\ncustomers_public\norder_items\norders\nproduct_tags\nproducts\nshipping_addresses\ntags\ntest_permissions",
+          "annotations": {
+            "audience": [
+              "user",
+              "assistant"
+            ],
+            "priority": 0.7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "prompt query_templates all",
+    "result": {
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "--- PRE-APPROVED SQL TEMPLATES ---\n\n### Customer Lifetime Value (LTV)\nDescription: Calculates the total revenue generated by each customer across all delivered orders. Use this whenever asked for LTV.\nSQL:\n```sql\nSELECT c.id, c.name, SUM(oi.unit_price * oi.quantity) as ltv FROM customers c JOIN orders o ON c.id = o.customer_id JOIN order_items oi ON o.id = oi.order_id WHERE o.status = 'delivered' GROUP BY c.id, c.name ORDER BY ltv DESC\n```\n\n### Product Performance (Total Sales)\nDescription: Calculates the total quantity sold and revenue generated per product. Use this for 'best selling products' or 'product revenue'.\nSQL:\n```sql\nSELECT p.id, p.name, SUM(oi.quantity) as total_units_sold, SUM(oi.quantity * oi.unit_price) as total_revenue FROM products p JOIN order_items oi ON p.id = oi.product_id JOIN orders o ON oi.order_id = o.id WHERE o.status != 'pending' GROUP BY p.id, p.name ORDER BY total_revenue DESC\n```\n\n"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "complete template",
+    "result": {
+      "completion": {
+        "values": [
+          "calculates"
+        ],
+        "total": 1,
+        "hasMore": false
+      }
+    }
+  },
+  {
+    "call": "ping",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"status\": \"ok\",\n  \"server_version\": \"<version>\",\n  \"pool\": {\n    \"active\": \"<n>\",\n    \"idle\": \"<n>\",\n    \"queue\": \"<n>\"\n  }\n}",
+          "annotations": {
+            "audience": [
+              "user"
+            ],
+            "priority": 0.3
+          }
+        }
+      ],
+      "structuredContent": {
+        "status": "ok",
+        "server_version": "<version>",
+        "pool": {
+          "active": "<n>",
+          "idle": "<n>",
+          "queue": "<n>"
+        }
+      }
+    }
+  },
+  {
+    "call": "refresh_schema",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Schema Graph rebuilt successfully. You can now use search_schema to explore the updated relationships.",
+          "annotations": {
+            "audience": [
+              "assistant"
+            ],
+            "priority": 0.2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "prompt query_templates",
+    "result": {
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "--- PRE-APPROVED SQL TEMPLATES ---\n\n### Customer Lifetime Value (LTV)\nDescription: Calculates the total revenue generated by each customer across all delivered orders. Use this whenever asked for LTV.\nSQL:\n```sql\nSELECT c.id, c.name, SUM(oi.unit_price * oi.quantity) as ltv FROM customers c JOIN orders o ON c.id = o.customer_id JOIN order_items oi ON o.id = oi.order_id WHERE o.status = 'delivered' GROUP BY c.id, c.name ORDER BY ltv DESC\n```\n\n### Product Performance (Total Sales)\nDescription: Calculates the total quantity sold and revenue generated per product. Use this for 'best selling products' or 'product revenue'.\nSQL:\n```sql\nSELECT p.id, p.name, SUM(oi.quantity) as total_units_sold, SUM(oi.quantity * oi.unit_price) as total_revenue FROM products p JOIN order_items oi ON p.id = oi.product_id JOIN orders o ON oi.order_id = o.id WHERE o.status != 'pending' GROUP BY p.id, p.name ORDER BY total_revenue DESC\n```\n\n"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "call": "resource schema",
+    "result": {
+      "contents": [
+        {
+          "uri": "mysql://schema",
+          "text": "Available tables in the database:\n\n- categories\n- customers\n- customers_public\n- order_items\n- orders\n- product_tags\n- products\n- shipping_addresses\n- tags\n- test_permissions"
+        }
+      ]
+    }
+  },
+  {
+    "call": "resource table",
+    "result": {
+      "contents": [
+        {
+          "uri": "mysql://tables/customers",
+          "text": "-- === TABLE: customers ===\nCREATE TABLE `customers` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `email` varchar(255) NOT NULL,\n  `phone` varchar(50) DEFAULT NULL,\n  `company` varchar(255) DEFAULT NULL,\n  `tier` enum('free','starter','pro','enterprise') DEFAULT 'free',\n  `notes` text,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NULL DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n\n/* SEMANTIC DICTIONARY:\n{\"customers.created_at\":\"UTC timestamp of when the user first registered on our platform.\"}\n*/\n"
+        }
+      ]
+    }
+  },
+  {
+    "call": "resource table missing",
+    "result": {
+      "contents": [
+        {
+          "uri": "mysql://tables/zzqqxx",
+          "text": "Table 'zzqqxx' not found or could not fetch DDL."
+        }
+      ]
+    }
+  },
+  {
+    "call": "complete table name",
+    "result": {
+      "completion": {
+        "values": [
+          "order_items",
+          "orders"
+        ],
+        "total": 2,
+        "hasMore": false
+      }
+    }
+  }
+]
